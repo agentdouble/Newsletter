@@ -240,7 +240,7 @@ function App() {
 
 function FeedTab({ newsletters }) {
   return (
-    <section className="panel-grid">
+    <section className="panel-grid panel-grid--single">
       <article className="panel-card">
         <header className="panel-header">
           <h2>Fil des newsletters</h2>
