@@ -2,8 +2,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-API_PORT=${API_PORT:-8000}
-WEB_PORT=${WEB_PORT:-5173}
 
 if ! command -v uv >/dev/null 2>&1; then
   echo "[start.sh] uv est requis (pip install uv)." >&2
@@ -19,6 +17,20 @@ free_port() {
 }
 
 cd "$ROOT"
+
+# Charge les ports éventuels depuis les fichiers .env
+if [ -f "backend/.env" ]; then
+  # shellcheck disable=SC2046
+  export $(grep -E '^(API_PORT)=' backend/.env | xargs) || true
+fi
+
+if [ -f "frontend/.env" ]; then
+  # shellcheck disable=SC2046
+  export $(grep -E '^(WEB_PORT)=' frontend/.env | xargs) || true
+fi
+
+API_PORT=${API_PORT:-8000}
+WEB_PORT=${WEB_PORT:-5173}
 
 if [ ! -d ".venv" ]; then
   echo "[start.sh] Création de l'environnement .venv avec uv venv..."

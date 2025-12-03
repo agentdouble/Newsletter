@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     environment: str = "local"
     debug: bool = False
     super_admin_emails: list[str] | str = Field(default="")
+    api_port: int = Field(default=8000, description="Port d'écoute de l'API (développement)")
+    web_port: int = Field(default=5173, description="Port du frontend (développement)")
 
     class Config:
         env_file = ".env"

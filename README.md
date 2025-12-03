@@ -55,9 +55,10 @@ Variables d’environnement (exemples fournis) :
   - `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`
   - `OPENAI_API_KEY` (pour `/newsletters/{id}/ai-draft`)
   - `SUPER_ADMIN_EMAILS` (liste séparée par des virgules) pour forcer des super admins côté conf
+  - `API_PORT` : port d'écoute de l'API (lu par `start.sh` et par FastAPI).
 - Frontend : `frontend/.env.example` (copie vers `frontend/.env`)
   - `VITE_API_BASE_URL` (URL de l’API FastAPI)
-Optionnel : `API_PORT`, `WEB_PORT` dans votre environnement si vous voulez surcharger les ports par défaut de `start.sh`.
+  - `WEB_PORT` : port du serveur Vite (lu par `start.sh` et utilisé pour paramétrer les CORS côté backend).
 
 ## Frontend
 Routes principales : `/login`, `/newsletter` (fil + collaboration), `/newsletters/:id/collect`, `/newsletters/:id/admin`, `/newsletters/:id/edit`, `/newsletters/archive`, `/admin/newsletters`, `/admin/groups`, `/admin/super`.

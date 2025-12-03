@@ -12,9 +12,14 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.project_name)
 
+frontend_origins = {
+    f"http://localhost:{settings.web_port}",
+    f"http://127.0.0.1:{settings.web_port}",
+}
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=list(frontend_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
