@@ -9,9 +9,9 @@ Application MVP pour collecter des success stories / fail stories et générer d
 
 ## Fonctionnalités du MVP (frontend uniquement)
 
-- **Fil** : liste de newsletters déjà publiées (données mockées).
+- **Fil** : fil de newsletters écrites comme des articles (quelques exemples mockés + newsletters générées automatiquement).
 - **Collect** : formulaire pour que les utilisateurs envoient leurs success/fail stories.
-- **Générateur** : vue admin qui consomme les contributions et génère un draft de newsletter prêt à être relu.
+- **Générateur** : vue admin qui consomme les contributions et génère un texte complet de newsletter, immédiatement poussé dans le fil.
 - **Admin** : gestion simple en mémoire des utilisateurs, rôles (user, admin, super admin) et groupes/équipes.
 - Sélecteur de rôle en haut de l’interface pour simuler les permissions.
 
@@ -45,4 +45,3 @@ Pour rester aligné avec la structure cible (backend + frontend), utilisez toujo
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
 - Les logs (`console.info`) sont ajoutés uniquement sur les actions clés (changement de rôle, création de contribution, génération d’une newsletter).
-

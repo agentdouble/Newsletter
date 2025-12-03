@@ -32,7 +32,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
-  background: radial-gradient(circle at top left, #ffe9fb 0, #fdf7ff 40%, #eef6ff 100%);
+  background: var(--bg);
   color: var(--text);
 }
 
@@ -62,7 +62,7 @@ body {
   justify-content: space-between;
   padding: 18px 22px;
   border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), #ffe9fb);
+  background: #ffffff;
   border: 1px solid var(--border-subtle);
   backdrop-filter: blur(18px);
   box-shadow: 0 18px 40px rgba(93, 32, 138, 0.15);
@@ -89,7 +89,7 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 40%;
-  background: conic-gradient(from 140deg, #ff72b6, #ffd86f, #7b6cff, #ff72b6);
+  background: var(--accent);
 }
 
 .logo-text {
@@ -168,7 +168,7 @@ body {
 }
 
 .tab-button--active {
-  background: radial-gradient(circle at top, #ffedf8, #ffd4f1);
+  background: var(--accent-soft);
   color: var(--text);
   font-weight: 600;
   box-shadow: 0 10px 22px rgba(255, 114, 182, 0.25);
@@ -206,7 +206,7 @@ body {
 }
 
 .panel-card--accent {
-  background: radial-gradient(circle at top left, #ffe9fb 0, #ffffff 55%);
+  background: var(--bg-elevated-soft);
 }
 
 .panel-card--wide {
@@ -267,6 +267,41 @@ body {
   padding-left: 18px;
   font-size: 12px;
   color: var(--text);
+}
+
+.newsletter-article {
+  padding: 14px 16px;
+  border-radius: 22px;
+  border: 1px solid var(--border-subtle);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.newsletter-article-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.newsletter-article-header h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.newsletter-meta-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.newsletter-body p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .mood-pill {
@@ -420,7 +455,7 @@ body {
 }
 
 .pill-switch-item--active {
-  background: radial-gradient(circle at top, #ffedf8, #ffd4f1);
+  background: var(--accent-soft);
   box-shadow: 0 8px 18px rgba(255, 114, 182, 0.24);
   color: var(--text);
   font-weight: 600;
@@ -461,7 +496,7 @@ body {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  background: var(--accent);
   color: #fff;
   box-shadow: 0 12px 26px rgba(255, 114, 182, 0.35);
 }
@@ -579,7 +614,7 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #7b6cff, #ff72b6);
+  background: var(--accent-alt);
   color: #fff;
   display: inline-flex;
   align-items: center;
@@ -652,4 +687,3 @@ body {
 .empty-state strong {
   color: var(--text);
 }
-

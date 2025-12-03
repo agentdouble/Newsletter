@@ -23,19 +23,29 @@ const STORY_TYPES = [
 const mockNewsletters = [
   {
     id: 'nl-001',
-    title: 'Sprint 24 · Wins & Lessons',
+    title: 'Newsletter Produit · Wins & leçons',
     date: '2026-02-14',
-    mood: 'optimistic',
-    highlights: ['+38% d’activation', 'Deux incidents majeurs résolus', 'Lancement du nouveau parcours onboarding'],
-    audience: 'Produit & Growth'
+    mood: 'optimiste',
+    audience: 'Produit & Growth',
+    body:
+      "Cette semaine, l’équipe Produit a partagé plusieurs avancées qui changent concrètement la vie des utilisateurs. " +
+      "Le nouveau parcours d’onboarding est désormais disponible pour 100 % des comptes, avec un taux d’activation en hausse. " +
+      "Côté incident, deux sujets majeurs ont été identifiés puis corrigés, ce qui nous permet de stabiliser davantage la plateforme.\n\n" +
+      "Merci à toutes les équipes impliquées dans ces améliorations : l’énergie collective se ressent dans les retours clients et dans les métriques. " +
+      "Les prochaines semaines seront dédiées à lisser encore l’expérience et à documenter les bonnes pratiques qui ont émergé."
   },
   {
     id: 'nl-002',
-    title: 'Ops & Platform · Fail & Fix',
+    title: 'Ops & Platform · Fails utiles',
     date: '2026-02-01',
     mood: 'radical honesty',
-    highlights: ['Incident API du 21/01', 'Runbook post-mortem partagé', 'Plan de durcissement SLO'],
-    audience: 'Tech & Ops'
+    audience: 'Tech & Ops',
+    body:
+      "Du côté de la plateforme, l’incident API du 21 janvier a occupé une grande partie des discussions. " +
+      "L’équipe a pris le temps de documenter ce qui s’est passé, ce qui a permis de clarifier la chaîne de décision et de renforcer les alertes. " +
+      "Un runbook dédié est désormais partagé avec toutes les personnes d’astreinte.\n\n" +
+      "Au-delà de l’incident lui-même, l’enjeu principal reste la capacité à apprendre vite et ensemble. " +
+      "Cette newsletter rassemble les retours de chacun et chacune, pour transformer un fail isolé en enseignements utiles pour toute l’organisation."
   }
 ];
 
@@ -94,6 +104,7 @@ function App() {
   const [role, setRole] = useState('user');
   const [activeTab, setActiveTab] = useState('feed');
   const [contributions, setContributions] = useState([]);
+  const [newsletters, setNewsletters] = useState(mockNewsletters);
   const [users, setUsers] = useState(initialUsers);
   const [groups, setGroups] = useState(initialGroups);
   const [newsletterDraft, setNewsletterDraft] = useState('');
@@ -127,6 +138,20 @@ function App() {
       contributions: contributions.length
     });
     setNewsletterDraft(draft);
+
+    const article = {
+      id: `nl-${Date.now()}`,
+      title: `Newsletter d’équipe – ${new Date().toLocaleDateString('fr-FR')}`,
+      date: new Date().toISOString(),
+      mood: 'générée automatiquement',
+      audience: 'Toute l’organisation',
+      body: draft
+    };
+
+    console.info('[generator] newsletter_published_to_feed', {
+      id: article.id
+    });
+    setNewsletters((prev) => [article, ...prev]);
   };
 
   const handleAddUser = (user) => {
@@ -190,7 +215,7 @@ function App() {
 
       <main className="app-main">
         {currentTab.id === 'feed' && (
-          <FeedTab newsletters={mockNewsletters} contributions={contributions} />
+          <FeedTab newsletters={newsletters} contributions={contributions} />
         )}
         {currentTab.id === 'collect' && (
           <CollectTab onCreate={handleCreateContribution} />
@@ -227,21 +252,28 @@ function FeedTab({ newsletters, contributions }) {
         </header>
         <div className="panel-body panel-body--list">
           {newsletters.map((nl) => (
-            <div key={nl.id} className="newsletter-chip">
-              <div className="newsletter-chip-header">
-                <h3>{nl.title}</h3>
-                <span className="tag tag--soft">
-                  {new Date(nl.date).toLocaleDateString('fr-FR')}
-                </span>
+            <article key={nl.id} className="newsletter-article">
+              <header className="newsletter-article-header">
+                <div>
+                  <h3>{nl.title}</h3>
+                  <p className="newsletter-chip-audience">{nl.audience}</p>
+                </div>
+                <div className="newsletter-meta-column">
+                  <span className="tag tag--soft">
+                    {new Date(nl.date).toLocaleDateString('fr-FR')}
+                  </span>
+                  {nl.mood && <span className="mood-pill">{nl.mood}</span>}
+                </div>
+              </header>
+              <div className="newsletter-body">
+                {nl.body
+                  .split('\n\n')
+                  .filter((block) => block.trim().length > 0)
+                  .map((block, index) => (
+                    <p key={index}>{block}</p>
+                  ))}
               </div>
-              <p className="newsletter-chip-audience">{nl.audience}</p>
-              <ul className="newsletter-highlights">
-                {nl.highlights.map((h) => (
-                  <li key={h}>{h}</li>
-                ))}
-              </ul>
-              <span className="mood-pill">{nl.mood}</span>
-            </div>
+            </article>
           ))}
         </div>
       </article>
@@ -679,4 +711,3 @@ function MetricBubble({ label, value, tone }) {
 }
 
 export default App;
-
