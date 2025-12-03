@@ -26,6 +26,18 @@ def _is_group_admin(db: Session, user: models.User, group_id: int) -> bool:
     return bool(membership and membership.role_in_group.lower() == "admin")
 
 
+def _is_newsletter_admin(db: Session, user: models.User, newsletter_id: int) -> bool:
+    return (
+        db.query(models.NewsletterAdmin)
+        .filter(
+            models.NewsletterAdmin.newsletter_id == newsletter_id,
+            models.NewsletterAdmin.user_id == user.id,
+        )
+        .first()
+        is not None
+    )
+
+
 async def get_current_user(
     db: Session = Depends(get_db), token: str = Depends(get_oauth2_scheme())
 ) -> models.User:
@@ -84,7 +96,9 @@ def ensure_newsletter_admin(
     user: models.User,
     newsletter: models.Newsletter,
 ) -> None:
-    if user.global_role == models.GlobalRole.SUPER_ADMIN:
+    if is_super_admin(user):
+        return
+    if _is_newsletter_admin(db, user, newsletter.id):
         return
     if user.global_role == models.GlobalRole.ADMIN and _is_group_admin(db, user, newsletter.group_id):
         return

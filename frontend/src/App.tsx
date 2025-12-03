@@ -10,13 +10,14 @@ import { LayoutEditorPage } from './pages/LayoutEditorPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewsletterAdminPage } from './pages/NewsletterAdminPage'
 import { NewslettersPage } from './pages/NewslettersPage'
+import { SuperAdminPage } from './pages/SuperAdminPage'
 
 function Shell() {
   const { user, logout } = useAuth()
 
   return (
     <>
-      <TopNav userName={user?.name ?? 'Utilisateur'} onLogout={logout} />
+      <TopNav user={user} onLogout={logout} />
       <main>
         <Outlet />
       </main>
@@ -27,20 +28,22 @@ function Shell() {
 function App() {
   const { user, loading } = useAuth()
 
-  const loginElement = loading ? <div className="app-shell">Chargement de la session…</div> : user ? <Navigate to="/newsletters" replace /> : <LoginPage />
+  const loginElement = loading ? <div className="app-shell">Chargement de la session…</div> : user ? <Navigate to="/newsletter" replace /> : <LoginPage />
 
   return (
     <Routes>
       <Route path="/login" element={loginElement} />
-      <Route element={loading ? <div className="app-shell">Chargement de la session…</div> : user ? <Shell /> : <Navigate to="/login" replace />}>
-        <Route path="/" element={<Navigate to="/newsletters" replace />} />
-        <Route path="/newsletters" element={<NewslettersPage />} />
+      <Route element={loading ? <div className="app-shell">Chargement de la session…</div> : user ? <Shell /> : <Navigate to="/login" replace />}> 
+        <Route path="/" element={<Navigate to="/newsletter" replace />} />
+        <Route path="/newsletter" element={<NewslettersPage />} />
+        <Route path="/newsletters" element={<Navigate to="/newsletter" replace />} />
         <Route path="/newsletters/archive" element={<ArchivePage />} />
         <Route path="/newsletters/:id/collect" element={<CollectPage />} />
         <Route path="/newsletters/:id/admin" element={<NewsletterAdminPage />} />
         <Route path="/newsletters/:id/edit" element={<LayoutEditorPage />} />
         <Route path="/admin/groups" element={<AdminGroupsPage />} />
         <Route path="/admin/newsletters" element={<AdminNewslettersPage />} />
+        <Route path="/admin/super" element={<SuperAdminPage />} />
       </Route>
     </Routes>
   )

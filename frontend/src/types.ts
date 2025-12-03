@@ -36,6 +36,13 @@ export interface Newsletter {
   updatedAt?: string
 }
 
+export interface NewsletterAdmin {
+  id: number
+  newsletterId: number
+  userId: number
+  user?: User
+}
+
 export interface Contribution {
   id: number
   newsletterId: number

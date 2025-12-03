@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
-from ..dependencies import ensure_newsletter_admin, get_current_active_user
+from ..dependencies import ensure_newsletter_admin, get_current_active_user, require_super_admin
 from ..services.ai_generator import generate_ai_draft
 
 router = APIRouter(prefix="/newsletters", tags=["newsletters"])
@@ -208,3 +208,83 @@ async def ai_draft_newsletter(
     db.commit()
     db.refresh(newsletter)
     return newsletter
+
+
+@router.get("/{newsletter_id}/admins", response_model=list[schemas.NewsletterAdminRead])
+async def list_newsletter_admins(
+    newsletter_id: int,
+    db: Session = Depends(get_db),
+    super_admin: models.User = Depends(require_super_admin),
+):
+    newsletter = db.get(models.Newsletter, newsletter_id)
+    if not newsletter:
+        raise HTTPException(status_code=404, detail="Newsletter not found")
+    return (
+        db.query(models.NewsletterAdmin)
+        .filter(models.NewsletterAdmin.newsletter_id == newsletter_id)
+        .all()
+    )
+
+
+@router.post(
+    "/{newsletter_id}/admins",
+    response_model=schemas.NewsletterAdminRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_newsletter_admin(
+    newsletter_id: int,
+    payload: schemas.NewsletterAdminCreate,
+    db: Session = Depends(get_db),
+    super_admin: models.User = Depends(require_super_admin),
+):
+    newsletter = db.get(models.Newsletter, newsletter_id)
+    if not newsletter:
+        raise HTTPException(status_code=404, detail="Newsletter not found")
+
+    user = db.get(models.User, payload.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing = (
+        db.query(models.NewsletterAdmin)
+        .filter(
+            models.NewsletterAdmin.newsletter_id == newsletter_id,
+            models.NewsletterAdmin.user_id == payload.user_id,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="User already admin for this newsletter")
+
+    admin_link = models.NewsletterAdmin(newsletter_id=newsletter_id, user_id=payload.user_id)
+    db.add(admin_link)
+    db.commit()
+    db.refresh(admin_link)
+    return admin_link
+
+
+@router.delete("/{newsletter_id}/admins/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_newsletter_admin(
+    newsletter_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    super_admin: models.User = Depends(require_super_admin),
+):
+    newsletter = db.get(models.Newsletter, newsletter_id)
+    if not newsletter:
+        raise HTTPException(status_code=404, detail="Newsletter not found")
+
+    admin_link = (
+        db.query(models.NewsletterAdmin)
+        .filter(
+            models.NewsletterAdmin.newsletter_id == newsletter_id,
+            models.NewsletterAdmin.user_id == user_id,
+        )
+        .first()
+    )
+    if not admin_link:
+        raise HTTPException(status_code=404, detail="Admin link not found")
+
+    db.delete(admin_link)
+    db.commit()
+    return None

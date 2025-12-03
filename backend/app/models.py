@@ -63,6 +63,7 @@ class User(Base):
 
     memberships = relationship("GroupMembership", back_populates="user", cascade="all, delete-orphan")
     contributions = relationship("Contribution", back_populates="user")
+    newsletter_admin_roles = relationship("NewsletterAdmin", back_populates="user", cascade="all, delete-orphan")
 
 
 class Group(Base):
@@ -105,6 +106,7 @@ class Newsletter(Base):
 
     group = relationship("Group", back_populates="newsletters")
     contributions = relationship("Contribution", back_populates="newsletter", cascade="all, delete-orphan")
+    admins = relationship("NewsletterAdmin", back_populates="newsletter", cascade="all, delete-orphan")
 
 
 class Contribution(Base):
@@ -123,6 +125,18 @@ class Contribution(Base):
 
     newsletter = relationship("Newsletter", back_populates="contributions")
     user = relationship("User", back_populates="contributions")
+
+
+class NewsletterAdmin(Base):
+    __tablename__ = "newsletter_admins"
+    __table_args__ = (UniqueConstraint("newsletter_id", "user_id", name="uq_newsletter_admin"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    newsletter_id = Column(Integer, ForeignKey("newsletters.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    newsletter = relationship("Newsletter", back_populates="admins")
+    user = relationship("User", back_populates="newsletter_admin_roles")
 
 
 class Template(Base):

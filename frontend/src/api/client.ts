@@ -3,8 +3,10 @@ import type {
   ContributionStatus,
   ContributionType,
   Group,
+  NewsletterAdmin,
   Newsletter,
   NewsletterStatus,
+  GlobalRole,
   User,
 } from '../types'
 
@@ -77,6 +79,15 @@ function mapContribution(payload: any): Contribution {
   }
 }
 
+function mapNewsletterAdmin(payload: any): NewsletterAdmin {
+  return {
+    id: payload.id,
+    newsletterId: payload.newsletter_id,
+    userId: payload.user_id,
+    user: payload.user ? mapUser(payload.user) : undefined,
+  }
+}
+
 export async function login(email: string, password: string): Promise<{ token: string; mustChangePassword: boolean }>
 {
   const body = new URLSearchParams({ username: email, password })
@@ -92,6 +103,33 @@ export async function login(email: string, password: string): Promise<{ token: s
 export async function fetchMe(token: string): Promise<User> {
   const response = await fetch(`${API_BASE_URL}/auth/me`, {
     headers: withAuth({}, token),
+  })
+  const data = await parseResponse<any>(response)
+  return mapUser(data)
+}
+
+export async function fetchUsers(token: string): Promise<User[]> {
+  const response = await fetch(`${API_BASE_URL}/users`, {
+    headers: withAuth({}, token),
+  })
+  const data = await parseResponse<any[]>(response)
+  return data.map(mapUser)
+}
+
+export async function createUser(
+  payload: { name: string; email: string; trigram: string; password: string; globalRole: GlobalRole },
+  token: string,
+): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/users`, {
+    method: 'POST',
+    headers: withAuth({ 'Content-Type': 'application/json' }, token),
+    body: JSON.stringify({
+      name: payload.name,
+      email: payload.email,
+      trigram: payload.trigram,
+      password: payload.password,
+      global_role: payload.globalRole,
+    }),
   })
   const data = await parseResponse<any>(response)
   return mapUser(data)
@@ -237,4 +275,30 @@ export async function renderNewsletter(newsletterId: number, token: string): Pro
   })
   const data = await parseResponse<any>(response)
   return mapNewsletter(data)
+}
+
+export async function fetchNewsletterAdmins(newsletterId: number, token: string): Promise<NewsletterAdmin[]> {
+  const response = await fetch(`${API_BASE_URL}/newsletters/${newsletterId}/admins`, {
+    headers: withAuth({}, token),
+  })
+  const data = await parseResponse<any[]>(response)
+  return data.map(mapNewsletterAdmin)
+}
+
+export async function addNewsletterAdmin(newsletterId: number, userId: number, token: string): Promise<NewsletterAdmin> {
+  const response = await fetch(`${API_BASE_URL}/newsletters/${newsletterId}/admins`, {
+    method: 'POST',
+    headers: withAuth({ 'Content-Type': 'application/json' }, token),
+    body: JSON.stringify({ user_id: userId }),
+  })
+  const data = await parseResponse<any>(response)
+  return mapNewsletterAdmin(data)
+}
+
+export async function removeNewsletterAdmin(newsletterId: number, userId: number, token: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/newsletters/${newsletterId}/admins/${userId}`, {
+    method: 'DELETE',
+    headers: withAuth({}, token),
+  })
+  await parseResponse<null>(response)
 }

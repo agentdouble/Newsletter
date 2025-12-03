@@ -120,6 +120,22 @@ class NewsletterRead(NewsletterBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class NewsletterAdminBase(BaseModel):
+    user_id: int
+
+
+class NewsletterAdminCreate(NewsletterAdminBase):
+    pass
+
+
+class NewsletterAdminRead(NewsletterAdminBase):
+    id: int
+    newsletter_id: int
+    user: UserRead
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # Contributions
 class ContributionBase(BaseModel):
     type: ContributionType

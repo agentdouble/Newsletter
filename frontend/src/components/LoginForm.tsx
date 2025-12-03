@@ -19,7 +19,7 @@ export function LoginForm() {
     setMessage('')
     try {
       await login(email, password)
-      navigate('/newsletters')
+      navigate('/newsletter')
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Connexion impossible')
     }

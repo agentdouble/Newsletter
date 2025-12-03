@@ -29,6 +29,7 @@ cd frontend && npm install
   - `/newsletters/{id}` + `/newsletters/{id}/my-contributions` pour la collecte.
   - `/newsletters/{id}/contributions` + `/contributions/{id}/status` pour l’admin.
   - `/newsletters/{id}/ai-draft`, `/newsletters/{id}/layout`, `/newsletters/{id}/render` pour l’éditeur de layout.
+  - `/newsletters/{id}/admins` (GET/POST/DELETE) pour nommer les admins d’une newsletter (super admin).
 - Admin : les pages groupes/newsletters utilisent les endpoints `/groups` et `/newsletters` (droits SUPER_ADMIN requis pour les groupes).
 
 ### Créer un super admin
@@ -41,7 +42,7 @@ curl -X POST http://localhost:8000/auth/bootstrap-admin \
 Connectez-vous ensuite sur `/login` avec ces identifiants (pensez à ajouter l’email dans `SUPER_ADMIN_EMAILS` si besoin).
 
 ## API FastAPI (raccourcis)
-Endpoints clés : `/auth/login`, `/auth/me`, `/users`, `/groups`, `/newsletters`, `/newsletters/{id}/contributions`, `/newsletters/{id}/ai-draft` (brouillon IA), `/newsletters/{id}/render`. Créez un admin via `POST /auth/bootstrap-admin` au premier lancement.
+Endpoints clés : `/auth/login`, `/auth/me`, `/users`, `/groups`, `/newsletters`, `/newsletters/{id}/contributions`, `/newsletters/{id}/admins`, `/newsletters/{id}/ai-draft` (brouillon IA), `/newsletters/{id}/render`. Créez un admin via `POST /auth/bootstrap-admin` au premier lancement.
 
 Rôles :
 - `SUPER_ADMIN` (global) : gère les utilisateurs/groupes, reset mot de passe, nomme les admins de groupe (emails dans `SUPER_ADMIN_EMAILS` ou rôle DB).
@@ -59,6 +60,6 @@ Variables d’environnement (exemples fournis) :
 Optionnel : `API_PORT`, `WEB_PORT` dans votre environnement si vous voulez surcharger les ports par défaut de `start.sh`.
 
 ## Frontend
-Routes principales : `/login`, `/newsletters`, `/newsletters/:id/collect`, `/admin/groups`, `/admin/newsletters`, `/newsletters/:id/admin`, `/newsletters/:id/edit`, `/newsletters/archive`.
+Routes principales : `/login`, `/newsletter` (fil + collaboration), `/newsletters/:id/collect`, `/newsletters/:id/admin`, `/newsletters/:id/edit`, `/newsletters/archive`, `/admin/newsletters`, `/admin/groups`, `/admin/super`.
 
-Le frontend est maquetté avec des données fictives et les composants du plan (LoginForm, NewsletterList, ContributionForm, LayoutEditor, CanvasEditor, etc.) en attendant le branchement sur l’API.
+Le hub `/newsletter` regroupe le fil et l’onglet collaboration (newsletters ouvertes), et la console `/admin/super` rassemble création d’utilisateurs, groupes et attribution d’admins par newsletter.
