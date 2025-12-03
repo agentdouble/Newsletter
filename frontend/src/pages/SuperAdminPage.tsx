@@ -20,6 +20,7 @@ export function SuperAdminPage() {
   const [creatingUser, setCreatingUser] = useState(false)
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [userFormError, setUserFormError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'users' | 'admins' | 'groups'>('users')
   const [userForm, setUserForm] = useState<{
     name: string
     email: string
@@ -155,8 +156,31 @@ export function SuperAdminPage() {
           <p className="muted">Créez des comptes, assignez des admins par newsletter et structurez les groupes.</p>
         </div>
       </div>
+      <div className="tab-bar">
+        <button
+          type="button"
+          className={activeTab === 'users' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('users')}
+        >
+          Utilisateurs
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'admins' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('admins')}
+        >
+          Admins NL
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'groups' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('groups')}
+        >
+          Groupes
+        </button>
+      </div>
 
-      <div className="grid two">
+      {activeTab === 'users' && (
         <div className="card">
           <div className="kicker">Utilisateurs</div>
           <h3>Création</h3>
@@ -207,7 +231,9 @@ export function SuperAdminPage() {
             ))}
           </div>
         </div>
+      )}
 
+      {activeTab === 'admins' && (
         <div className="card">
           <div className="kicker">Admins par newsletter</div>
           <h3>Assigner</h3>
@@ -262,15 +288,19 @@ export function SuperAdminPage() {
             </>
           )}
         </div>
-      </div>
+      )}
 
-      <div className="section-title">
+      {activeTab === 'groups' && (
         <div>
-          <div className="kicker">Groupes</div>
-          <h3 className="page-title">Organisation</h3>
+          <div className="section-title">
+            <div>
+              <div className="kicker">Groupes</div>
+              <h3 className="page-title">Organisation</h3>
+            </div>
+          </div>
+          <AdminGroupManager groups={groups} onCreate={handleCreateGroup} creating={creatingGroup} />
         </div>
-      </div>
-      <AdminGroupManager groups={groups} onCreate={handleCreateGroup} creating={creatingGroup} />
+      )}
     </div>
   )
 }
