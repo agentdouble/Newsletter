@@ -214,9 +214,7 @@ function App() {
       </nav>
 
       <main className="app-main">
-        {currentTab.id === 'feed' && (
-          <FeedTab newsletters={newsletters} contributions={contributions} />
-        )}
+        {currentTab.id === 'feed' && <FeedTab newsletters={newsletters} />}
         {currentTab.id === 'collect' && (
           <CollectTab onCreate={handleCreateContribution} />
         )}
@@ -240,7 +238,7 @@ function App() {
   );
 }
 
-function FeedTab({ newsletters, contributions }) {
+function FeedTab({ newsletters }) {
   return (
     <section className="panel-grid">
       <article className="panel-card">
@@ -275,37 +273,6 @@ function FeedTab({ newsletters, contributions }) {
               </div>
             </article>
           ))}
-        </div>
-      </article>
-
-      <article className="panel-card panel-card--accent">
-        <header className="panel-header">
-          <h2>Pulse des contributions</h2>
-          <p className="panel-subtitle">
-            Combien de stories sont prêtes à être racontées ?
-          </p>
-        </header>
-        <div className="panel-body">
-          <div className="metric-row">
-            <MetricBubble
-              label="Contributions totales"
-              value={contributions.length}
-            />
-            <MetricBubble
-              label="Success"
-              value={contributions.filter((c) => c.type === 'success').length}
-              tone="success"
-            />
-            <MetricBubble
-              label="Fails"
-              value={contributions.filter((c) => c.type === 'fail').length}
-              tone="fail"
-            />
-          </div>
-          <p className="metric-footnote">
-            Astuce : animez une petite “Fail Night” mensuelle pour nourrir ce
-            flux en continu.
-          </p>
         </div>
       </article>
     </section>
@@ -691,22 +658,6 @@ function AdminTab({ users, groups, onAddUser, onToggleGroupPermission }) {
         </div>
       </article>
     </section>
-  );
-}
-
-function MetricBubble({ label, value, tone }) {
-  const toneClass =
-    tone === 'success'
-      ? 'metric-bubble metric-bubble--success'
-      : tone === 'fail'
-      ? 'metric-bubble metric-bubble--fail'
-      : 'metric-bubble';
-
-  return (
-    <div className={toneClass}>
-      <span className="metric-value">{value}</span>
-      <span className="metric-label">{label}</span>
-    </div>
   );
 }
 
