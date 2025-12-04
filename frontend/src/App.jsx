@@ -187,7 +187,6 @@ function App() {
             <span className="logo-dot" />
             <span className="logo-text">Newsletter Studio</span>
           </div>
-          <span className="header-tagline">Cute-alism · 2026 Edition</span>
         </div>
         <div className="header-controls">
           <div className="role-switch">
