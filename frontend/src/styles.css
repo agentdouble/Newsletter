@@ -436,6 +436,10 @@ body {
   resize: vertical;
 }
 
+.notepad-textarea {
+  min-height: 260px;
+}
+
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible {

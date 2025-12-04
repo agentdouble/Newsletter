@@ -327,7 +327,8 @@ function CollectTab({ onCreate, targetLabel }) {
         <label className="field field--full">
           <span className="field-label">Nouveautés du mois</span>
           <textarea
-            rows={3}
+            className="notepad-textarea"
+            rows={14}
             value={text}
             onChange={(event) => setText(event.target.value)}
             placeholder="Résumez les faits marquants, décisions importantes, incidents et apprentissages à partager dans la newsletter."
