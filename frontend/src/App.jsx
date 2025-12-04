@@ -294,21 +294,6 @@ function App() {
                 ))}
               </select>
             </div>
-            <div className="role-switch">
-              <span className="role-label">Groupe</span>
-              <select
-                className="role-select"
-                value={activeGroupId}
-                onChange={handleGroupChange}
-              >
-                <option value="all">Toutes les équipes</option>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
         <nav className="tab-nav">
