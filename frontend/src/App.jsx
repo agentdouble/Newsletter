@@ -1,11 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Chart, ArcElement, Tooltip, Legend } from 'chart.js';
 import { useLocation, useNavigate } from 'react-router-dom';
+
+Chart.register(ArcElement, Tooltip, Legend);
 
 const ROLES = ['user', 'admin', 'superadmin'];
 
 const TABS = [
   { id: 'feed', label: 'Fil', roles: ROLES },
   { id: 'collect', label: 'Collect', roles: ROLES },
+  { id: 'contributions', label: 'Contributions', roles: ROLES },
   { id: 'generator', label: 'Générateur', roles: ['admin', 'superadmin'] },
   { id: 'admin', label: 'Admin', roles: ['superadmin'] }
 ];
@@ -13,6 +17,7 @@ const TABS = [
 const TAB_ROUTES = {
   feed: '/newsletter/fil',
   collect: '/newsletter/collect',
+  contributions: '/newsletter/contribution',
   generator: '/newsletter/generateur',
   admin: '/newsletter/admin'
 };
@@ -369,6 +374,13 @@ function App() {
             onCreate={handleCreateContribution}
           />
         )}
+        {currentTab.id === 'contributions' && (
+          <ContributionTab
+            contributions={contributions}
+            users={users}
+            targetLabel={currentNewsletterLabel}
+          />
+        )}
         {currentTab.id === 'generator' && (
           <GeneratorTab
             contributions={visibleGeneratorContributions}
@@ -581,6 +593,133 @@ function CollectTab({ onCreate, targetLabel }) {
           </p>
         </div>
       </form>
+    </section>
+  );
+}
+
+function ContributionTab({ contributions, users, targetLabel }) {
+  const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+
+  const scopedContributions = useMemo(
+    () =>
+      contributions.filter(
+        (c) => (c.newsletterLabel || '') === (targetLabel || '')
+      ),
+    [contributions, targetLabel]
+  );
+
+  const uniqueContributors = useMemo(() => {
+    const names = scopedContributions
+      .map((c) => (c.author || 'Anonyme').trim().toLowerCase())
+      .filter(Boolean);
+    return Array.from(new Set(names));
+  }, [scopedContributions]);
+
+  const contributorCount = uniqueContributors.length;
+  const totalUsers = users.length;
+  const participationRate = totalUsers
+    ? Math.round((contributorCount / totalUsers) * 100)
+    : 0;
+  const remaining = Math.max(totalUsers - contributorCount, 0);
+
+  useEffect(() => {
+    const node = chartRef.current;
+    if (!node) return undefined;
+
+    const data = [contributorCount, remaining];
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.data.datasets[0].data = data;
+      chartInstanceRef.current.update();
+      return undefined;
+    }
+
+    chartInstanceRef.current = new Chart(node, {
+      type: 'doughnut',
+      data: {
+        labels: ['Contributeurs', 'Autres membres'],
+        datasets: [
+          {
+            data,
+            backgroundColor: ['#000000', '#e0e0e0'],
+            borderWidth: 0
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        cutout: '70%',
+        animation: false
+      }
+    });
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, [contributorCount, remaining]);
+
+  useEffect(() => {
+    console.info('[contributions] tab_opened', {
+      contributors: contributorCount,
+      totalUsers,
+      participationRate
+    });
+  }, [contributorCount, participationRate, totalUsers]);
+
+  return (
+    <section className="panel-grid panel-grid--single">
+      <article className="panel-card">
+        <header className="panel-header">
+          <h2>Contributions en cours</h2>
+          <p className="panel-subtitle">
+            Vue d’ensemble des contributions pour {targetLabel} et taux de
+            participation.
+          </p>
+        </header>
+
+        <div className="contribution-stats">
+          <div className="chart-box">
+            <canvas ref={chartRef} width="140" height="140" />
+          </div>
+          <div className="stats-metrics">
+            <p className="stats-metric">{participationRate}%</p>
+            <p className="stats-helper">taux de participation unique</p>
+            <p className="stats-detail">
+              {contributorCount} contributeur(s) / {totalUsers} membre(s)
+            </p>
+          </div>
+        </div>
+
+        <div className="panel-body panel-body--list">
+          {scopedContributions.length ? (
+            scopedContributions.map((c) => (
+              <div key={c.id} className="contribution-pill">
+                <p className="contribution-team">
+                  {(c.author || '').trim() || 'Anonyme'} ·{' '}
+                  {c.newsletterLabel || targetLabel || 'Newsletter'}
+                </p>
+                <p className="contribution-impact">
+                  {(c.text && c.text.length > 240
+                    ? `${c.text.slice(0, 240).trim()}…`
+                    : c.text) || ''}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="empty-state">
+              Aucune contribution enregistrée pour cette édition.
+            </p>
+          )}
+        </div>
+      </article>
     </section>
   );
 }
