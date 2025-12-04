@@ -3,6 +3,18 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const ROLES = ['user', 'admin', 'superadmin'];
 
+const REACTIONS = [
+  { id: 'insight', emoji: '👍', label: 'Utile' },
+  { id: 'bravo', emoji: '👏', label: 'Bravo' },
+  { id: 'question', emoji: '❓', label: 'Question' }
+];
+
+const REACTION_BASELINE = {
+  insight: 0,
+  bravo: 0,
+  question: 0
+};
+
 const TABS = [
   { id: 'feed', label: 'Fil', roles: ROLES },
   { id: 'collect', label: 'Collect', roles: ROLES },
@@ -79,6 +91,14 @@ const initialUsers = [
   { id: 'u-2', name: 'Noah', role: 'admin', groupIds: ['g-3'] },
   { id: 'u-3', name: 'Sacha', role: 'superadmin', groupIds: ['g-1', 'g-2'] }
 ];
+
+function withEngagement(newsletter) {
+  return {
+    ...newsletter,
+    reactions: { ...REACTION_BASELINE, ...(newsletter.reactions || {}) },
+    comments: newsletter.comments || []
+  };
+}
 
 function escapeHtml(text) {
   if (!text) return '';
@@ -159,7 +179,9 @@ function buildNewsletterDraft(contributions, label) {
 function App() {
   const [role, setRole] = useState('user');
   const [contributions, setContributions] = useState([]);
-  const [newsletters, setNewsletters] = useState(mockNewsletters);
+  const [newsletters, setNewsletters] = useState(
+    mockNewsletters.map(withEngagement)
+  );
   const [users, setUsers] = useState(initialUsers);
   const [groups, setGroups] = useState(initialGroups);
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
@@ -191,6 +213,18 @@ function App() {
     );
     return match ? match[0] : 'feed';
   }, [location.pathname]);
+
+  const activeGroup = useMemo(
+    () =>
+      activeGroupId === 'all'
+        ? null
+        : groups.find((group) => group.id === activeGroupId) || null,
+    [activeGroupId, groups]
+  );
+
+  const commentAuthor = activeGroup
+    ? `${ROLE_LABELS[role]} · ${activeGroup.name}`
+    : ROLE_LABELS[role];
 
   const selectedNewsletterId = useMemo(() => {
     if (currentTabId !== 'feed') return null;
@@ -266,7 +300,9 @@ function App() {
       audience: targetGroup ? targetGroup.name : 'Toute l’organisation',
       body,
       groupId: activeGroupId === 'all' ? null : activeGroupId,
-      imageUrl: imageUrl || null
+      imageUrl: imageUrl || null,
+      reactions: { ...REACTION_BASELINE },
+      comments: []
     };
 
     console.info('[generator] newsletter_published_to_feed', {
@@ -275,6 +311,54 @@ function App() {
       hasImage: Boolean(article.imageUrl)
     });
     setNewsletters((prev) => [article, ...prev]);
+  };
+
+  const handleReactToNewsletter = (newsletterId, reactionId) => {
+    if (!Object.prototype.hasOwnProperty.call(REACTION_BASELINE, reactionId)) {
+      return;
+    }
+    setNewsletters((prev) =>
+      prev.map((nl) => {
+        if (nl.id !== newsletterId) return nl;
+        const safeReactions = {
+          ...REACTION_BASELINE,
+          ...(nl.reactions || {})
+        };
+        return {
+          ...nl,
+          reactions: {
+            ...safeReactions,
+            [reactionId]: (safeReactions[reactionId] || 0) + 1
+          }
+        };
+      })
+    );
+    console.info('[feed] reaction_recorded', {
+      id: newsletterId,
+      reaction: reactionId
+    });
+  };
+
+  const handleAddComment = (newsletterId, body) => {
+    const trimmed = (body || '').trim();
+    if (!trimmed) return;
+    const entry = {
+      id: `cm-${Date.now()}`,
+      author: commentAuthor,
+      body: trimmed,
+      createdAt: new Date().toISOString()
+    };
+    console.info('[feed] comment_added', {
+      id: newsletterId,
+      author: commentAuthor
+    });
+    setNewsletters((prev) =>
+      prev.map((nl) =>
+        nl.id === newsletterId
+          ? { ...nl, comments: [entry, ...(nl.comments || [])] }
+          : nl
+      )
+    );
   };
 
   const handleAddUser = (user) => {
@@ -393,6 +477,9 @@ function App() {
             selectedNewsletterId={selectedNewsletterId}
             onOpenNewsletter={handleOpenNewsletter}
             onBackToFeed={handleBackToFeed}
+            onReact={handleReactToNewsletter}
+            onAddComment={handleAddComment}
+            viewerLabel={commentAuthor}
           />
         )}
         {currentTab.id === 'collect' && (
@@ -432,8 +519,13 @@ function FeedTab({
   activeGroupId,
   selectedNewsletterId,
   onOpenNewsletter,
-  onBackToFeed
+  onBackToFeed,
+  onReact,
+  onAddComment,
+  viewerLabel
 }) {
+  const [commentDrafts, setCommentDrafts] = useState({});
+
   const activeGroupName =
     activeGroupId === 'all'
       ? 'Toutes les équipes'
@@ -450,6 +542,21 @@ function FeedTab({
     ? [selectedNewsletter]
     : visibleNewsletters;
   const isDetailView = Boolean(selectedNewsletter);
+
+  const handleReactionClick = (event, newsletterId, reactionId) => {
+    event.stopPropagation();
+    if (onReact) {
+      onReact(newsletterId, reactionId);
+    }
+  };
+
+  const handleCommentSubmit = (event, newsletterId) => {
+    event.preventDefault();
+    const text = (commentDrafts[newsletterId] || '').trim();
+    if (!text || !onAddComment) return;
+    onAddComment(newsletterId, text);
+    setCommentDrafts((prev) => ({ ...prev, [newsletterId]: '' }));
+  };
 
   return (
     <section className="panel-grid panel-grid--single">
@@ -477,6 +584,11 @@ function FeedTab({
               plainText.length > 260
                 ? `${plainText.slice(0, 260).trim()}…`
                 : plainText;
+            const reactions = {
+              ...REACTION_BASELINE,
+              ...(nl.reactions || {})
+            };
+            const comments = nl.comments || [];
 
             const imageNode =
               nl.imageUrl && (
@@ -538,6 +650,106 @@ function FeedTab({
                 </div>
 
                 {!isActive && imageNode}
+
+                <div
+                  className="newsletter-engagement"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="reaction-row">
+                    {REACTIONS.map((reaction) => (
+                      <button
+                        key={reaction.id}
+                        type="button"
+                        className="reaction-button"
+                        onClick={(event) =>
+                          handleReactionClick(event, nl.id, reaction.id)
+                        }
+                      >
+                        <span>{reaction.emoji}</span>
+                        <span className="reaction-count">
+                          {reactions[reaction.id] || 0}
+                        </span>
+                        <span className="reaction-label">
+                          {reaction.label}
+                        </span>
+                      </button>
+                    ))}
+                    <span className="comment-count">
+                      💬 {comments.length}
+                    </span>
+                  </div>
+                </div>
+
+                {isActive && (
+                  <div className="comment-stack">
+                    <div className="comment-head">
+                      <h4>Commentaires</h4>
+                      <span className="comment-count">
+                        {comments.length} en fil
+                      </span>
+                    </div>
+                    {comments.length ? (
+                      <div className="comment-list">
+                        {comments.map((comment) => (
+                          <div key={comment.id} className="comment-item">
+                            <div className="comment-meta">
+                              <span>{comment.author || 'Lecteur'}</span>
+                              <span>
+                                {new Date(comment.createdAt).toLocaleString(
+                                  'fr-FR',
+                                  {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }
+                                )}
+                              </span>
+                            </div>
+                            <p className="comment-body">{comment.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="empty-state">
+                        Aucun commentaire pour le moment.
+                      </p>
+                    )}
+                    <form
+                      className="comment-form"
+                      onSubmit={(event) => handleCommentSubmit(event, nl.id)}
+                    >
+                      <label className="field field--full">
+                        <span className="field-label">
+                          Réagir en tant que {viewerLabel}
+                        </span>
+                        <textarea
+                          className="notepad-textarea"
+                          rows={2}
+                          value={commentDrafts[nl.id] || ''}
+                          onChange={(event) =>
+                            setCommentDrafts((prev) => ({
+                              ...prev,
+                              [nl.id]: event.target.value
+                            }))
+                          }
+                          placeholder="Réagissez ou posez une question…"
+                        />
+                      </label>
+                      <div className="form-actions form-actions--right">
+                        <button
+                          type="submit"
+                          className="primary-button"
+                          disabled={
+                            !(commentDrafts[nl.id] || '').trim().length
+                          }
+                        >
+                          Publier
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
               </article>
             );
           })}
