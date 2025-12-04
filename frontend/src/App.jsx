@@ -93,9 +93,9 @@ const initialGroups = [
 ];
 
 const initialUsers = [
-  { id: 'u-1', name: 'Lina', role: 'user', groupIds: ['g-1'] },
-  { id: 'u-2', name: 'Noah', role: 'admin', groupIds: ['g-3'] },
-  { id: 'u-3', name: 'Sacha', role: 'superadmin', groupIds: ['g-1', 'g-2'] }
+  { id: 'u-1', name: 'GJV', role: 'user', groupIds: ['g-1'] },
+  { id: 'u-2', name: 'XPD', role: 'admin', groupIds: ['g-3'] },
+  { id: 'u-3', name: 'QLR', role: 'superadmin', groupIds: ['g-1', 'g-2'] }
 ];
 
 function escapeHtml(text) {
@@ -106,6 +106,11 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function toTrigram(value) {
+  const cleaned = (value || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3);
+  return cleaned.toUpperCase();
 }
 
 function buildNewsletterDraft(contributions, label) {
@@ -287,7 +292,9 @@ function App() {
   };
 
   const handleAddUser = (user) => {
-    const entry = { id: `u-${Date.now()}`, ...user };
+    const trigram = toTrigram(user.name);
+    if (!trigram) return;
+    const entry = { id: `u-${Date.now()}`, ...user, name: trigram };
     console.info('[admin] user_added', entry);
     setUsers((prev) => [...prev, entry]);
   };
@@ -755,7 +762,8 @@ function AdminTab({
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'name' ? toTrigram(value) : value;
+    setForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const handleGroupIdsChange = (event) => {
@@ -999,7 +1007,7 @@ function AdminTab({
               type="text"
               value={form.name}
               onChange={handleChange}
-              placeholder="Nouvel utilisateur…"
+              placeholder="Trigramme (ex: GJV)"
             />
           </label>
           <label className="field">
