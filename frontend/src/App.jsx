@@ -29,6 +29,7 @@ const mockNewsletters = [
     title: 'Newsletter Produit · Wins & leçons',
     date: '2026-02-14',
     audience: 'Produit & Growth',
+    groupId: 'g-1',
     body:
       "Cette édition synthétise les principaux enseignements partagés par les équipes Produit au cours du dernier cycle. " +
       "L’objectif est de donner une vue claire des décisions structurantes, des résultats obtenus et des chantiers encore ouverts, " +
@@ -47,6 +48,7 @@ const mockNewsletters = [
     title: 'Ops & Platform · Fails utiles',
     date: '2026-02-01',
     audience: 'Tech & Ops',
+    groupId: 'g-2',
     body:
       "Cette édition est centrée sur l’analyse des incidents récents et sur les mesures prises pour renforcer la robustesse de la plateforme. " +
       "Elle vise à rendre visibles les arbitrages effectués, les points de vigilance identifiés et les engagements pris vis-à-vis des équipes consommatrices des services.\n\n" +
@@ -125,6 +127,7 @@ function App() {
   const [users, setUsers] = useState(initialUsers);
   const [groups, setGroups] = useState(initialGroups);
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
+  const [activeGroupId, setActiveGroupId] = useState('all');
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -163,22 +166,43 @@ function App() {
     }
   };
 
+  const handleGroupChange = (event) => {
+    const nextGroupId = event.target.value;
+    console.info('[context] active_group_changed', {
+      from: activeGroupId,
+      to: nextGroupId
+    });
+    setActiveGroupId(nextGroupId);
+  };
+
   const handleCreateContribution = (payload) => {
     const entry = {
       id: `c-${Date.now()}`,
-      ...payload
+      ...payload,
+      groupId: activeGroupId
     };
     console.info('[collect] contribution_created', entry);
     setContributions((prev) => [entry, ...prev]);
   };
 
+  const visibleGeneratorContributions = useMemo(
+    () =>
+      contributions.filter(
+        (c) =>
+          c.newsletterLabel === currentNewsletterLabel &&
+          (activeGroupId === 'all' || c.groupId === activeGroupId)
+      ),
+    [contributions, currentNewsletterLabel, activeGroupId]
+  );
+
   const handleGenerateDraft = () => {
-    const relevantContributions = contributions.filter(
-      (c) => c.newsletterLabel === currentNewsletterLabel
+    const draft = buildNewsletterDraft(
+      visibleGeneratorContributions,
+      currentNewsletterLabel
     );
-    const draft = buildNewsletterDraft(relevantContributions, currentNewsletterLabel);
     console.info('[generator] newsletter_draft_generated', {
-      contributions: relevantContributions.length
+      contributions: visibleGeneratorContributions.length,
+      groupId: activeGroupId
     });
     setNewsletterDraftHtml(draft);
   };
@@ -186,16 +210,22 @@ function App() {
   const handlePublishDraft = (html) => {
     const body = (html || '').trim();
     if (!body) return;
+    const targetGroup =
+      activeGroupId === 'all'
+        ? null
+        : groups.find((group) => group.id === activeGroupId) || null;
     const article = {
       id: `nl-${Date.now()}`,
       title: currentNewsletterLabel,
       date: new Date().toISOString(),
-      audience: 'Toute l’organisation',
-      body
+      audience: targetGroup ? targetGroup.name : 'Toute l’organisation',
+      body,
+      groupId: activeGroupId === 'all' ? null : activeGroupId
     };
 
     console.info('[generator] newsletter_published_to_feed', {
-      id: article.id
+      id: article.id,
+      groupId: article.groupId
     });
     setNewsletters((prev) => [article, ...prev]);
   };
@@ -242,6 +272,21 @@ function App() {
                 ))}
               </select>
             </div>
+            <div className="role-switch">
+              <span className="role-label">Groupe</span>
+              <select
+                className="role-select"
+                value={activeGroupId}
+                onChange={handleGroupChange}
+              >
+                <option value="all">Toutes les équipes</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         <nav className="tab-nav">
@@ -261,7 +306,13 @@ function App() {
       </header>
 
       <main className="app-main">
-        {currentTab.id === 'feed' && <FeedTab newsletters={newsletters} />}
+        {currentTab.id === 'feed' && (
+          <FeedTab
+            newsletters={newsletters}
+            groups={groups}
+            activeGroupId={activeGroupId}
+          />
+        )}
         {currentTab.id === 'collect' && (
           <CollectTab
             targetLabel={currentNewsletterLabel}
@@ -270,9 +321,7 @@ function App() {
         )}
         {currentTab.id === 'generator' && (
           <GeneratorTab
-            contributions={contributions.filter(
-              (c) => c.newsletterLabel === currentNewsletterLabel
-            )}
+            contributions={visibleGeneratorContributions}
             targetLabel={currentNewsletterLabel}
             draftHtml={newsletterDraftHtml}
             onGenerate={handleGenerateDraft}
@@ -292,18 +341,28 @@ function App() {
   );
 }
 
-function FeedTab({ newsletters }) {
+function FeedTab({ newsletters, groups, activeGroupId }) {
+  const activeGroupName =
+    activeGroupId === 'all'
+      ? 'Toutes les équipes'
+      : (groups.find((g) => g.id === activeGroupId) || {}).name ||
+        'Toutes les équipes';
+  const visibleNewsletters =
+    activeGroupId === 'all'
+      ? newsletters
+      : newsletters.filter((nl) => nl.groupId === activeGroupId);
+
   return (
     <section className="panel-grid panel-grid--single">
       <article className="panel-card panel-card--feed">
         <header className="panel-header panel-header--feed">
           <h2>Fil des newsletters internes</h2>
           <p className="panel-subtitle">
-            Dernières éditions prêtes à être partagées à toute l’organisation.
+            Dernières éditions prêtes à être partagées · {activeGroupName}.
           </p>
         </header>
         <div className="panel-body panel-body--list newsletter-list">
-          {newsletters.map((nl) => (
+          {visibleNewsletters.map((nl) => (
             <article key={nl.id} className="newsletter-article">
               <header className="newsletter-article-header">
                 <div>
