@@ -317,8 +317,22 @@ body {
 .admin-tab-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 8px;
+  padding: 0 4px 6px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.admin-tab-nav .tab-button {
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.admin-tab-nav .tab-button--active {
+  border-bottom: 2px solid var(--accent);
 }
 
 .panel-header--feed h2 {
