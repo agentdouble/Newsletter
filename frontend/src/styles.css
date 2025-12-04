@@ -560,7 +560,7 @@ body {
 }
 
 .notepad-textarea {
-  min-height: 260px;
+  min-height: 110px;
 }
 
 .field input:focus-visible,
