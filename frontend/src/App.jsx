@@ -412,6 +412,9 @@ function FeedTab({
   const selectedNewsletter =
     selectedNewsletterId &&
     visibleNewsletters.find((nl) => nl.id === selectedNewsletterId);
+  const listNewsletters = selectedNewsletter
+    ? [selectedNewsletter]
+    : visibleNewsletters;
 
   return (
     <section className="panel-grid panel-grid--single">
@@ -432,7 +435,7 @@ function FeedTab({
           )}
         </header>
         <div className="panel-body panel-body--list newsletter-list">
-          {visibleNewsletters.map((nl) => {
+          {listNewsletters.map((nl) => {
             const isActive = nl.id === selectedNewsletterId;
             const hasHtml =
               nl.body && /<\/?[a-z][\s\S]*>/i.test(nl.body || '');
