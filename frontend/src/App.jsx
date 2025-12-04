@@ -969,7 +969,6 @@ function AdminTab({
                 </div>
               </div>
               <div className="user-side">
-                <span className="tag tag--soft">{ROLE_LABELS[user.role]}</span>
                 <details className="user-groups-dropdown">
                   <summary>Groupes</summary>
                   <div className="user-groups-list">
