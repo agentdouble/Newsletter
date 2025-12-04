@@ -54,16 +54,16 @@ const mockNewsletters = [
   }
 ];
 
-const initialUsers = [
-  { id: 'u-1', name: 'Lina', role: 'user', group: 'Produit' },
-  { id: 'u-2', name: 'Noah', role: 'admin', group: 'Communication' },
-  { id: 'u-3', name: 'Sacha', role: 'superadmin', group: 'People Ops' }
-];
-
 const initialGroups = [
   { id: 'g-1', name: 'Produit', canContribute: true, canApprove: false },
   { id: 'g-2', name: 'Tech', canContribute: true, canApprove: true },
   { id: 'g-3', name: 'Communication', canContribute: false, canApprove: true }
+];
+
+const initialUsers = [
+  { id: 'u-1', name: 'Lina', role: 'user', groupIds: ['g-1'] },
+  { id: 'u-2', name: 'Noah', role: 'admin', groupIds: ['g-3'] },
+  { id: 'u-3', name: 'Sacha', role: 'superadmin', groupIds: ['g-1', 'g-2'] }
 ];
 
 function escapeHtml(text) {
@@ -458,7 +458,7 @@ function AdminTab({ users, groups, onAddUser, onToggleGroupPermission }) {
   const [form, setForm] = useState({
     name: '',
     role: 'user',
-    group: ''
+    groupIds: []
   });
 
   const handleChange = (event) => {
@@ -466,14 +466,24 @@ function AdminTab({ users, groups, onAddUser, onToggleGroupPermission }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleGroupIdsChange = (event) => {
+    const options = Array.from(event.target.selectedOptions || []);
+    const nextGroupIds = options.map((option) => option.value);
+    setForm((prev) => ({ ...prev, groupIds: nextGroupIds }));
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!form.name.trim()) return;
-    onAddUser(form);
+    onAddUser({
+      name: form.name,
+      role: form.role,
+      groupIds: form.groupIds
+    });
     setForm({
       name: '',
       role: 'user',
-      group: ''
+      groupIds: []
     });
   };
 
@@ -497,7 +507,17 @@ function AdminTab({ users, groups, onAddUser, onToggleGroupPermission }) {
                   <p className="user-name">{user.name}</p>
                   <p className="user-meta">
                     {ROLE_LABELS[user.role]} ·{' '}
-                    {user.group || 'Groupe non renseigné'}
+                    {(() => {
+                      const ids = user.groupIds || [];
+                      const names = ids
+                        .map((id) => {
+                          const group = groups.find((g) => g.id === id);
+                          return group ? group.name : null;
+                        })
+                        .filter(Boolean);
+                      if (names.length) return names.join(', ');
+                      return user.group || 'Aucun groupe';
+                    })()}
                   </p>
                 </div>
               </div>
@@ -528,14 +548,19 @@ function AdminTab({ users, groups, onAddUser, onToggleGroupPermission }) {
             </select>
           </label>
           <label className="field">
-            <span className="field-label">Groupe</span>
-            <input
-              name="group"
-              type="text"
-              value={form.group}
-              onChange={handleChange}
-              placeholder="Produit, Tech, Sales…"
-            />
+            <span className="field-label">Groupes</span>
+            <select
+              name="groupIds"
+              multiple
+              value={form.groupIds}
+              onChange={handleGroupIdsChange}
+            >
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="form-actions form-actions--right">
             <button
