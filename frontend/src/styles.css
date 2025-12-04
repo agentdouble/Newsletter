@@ -443,31 +443,6 @@ body {
   outline-offset: 1px;
 }
 
-.pill-switch {
-  display: inline-flex;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 999px;
-  background: rgba(253, 247, 255, 0.9);
-}
-
-.pill-switch-item {
-  border-radius: 999px;
-  border: 0;
-  padding: 6px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-soft);
-}
-
-.pill-switch-item--active {
-  background: var(--accent-soft);
-  box-shadow: 0 8px 18px rgba(255, 114, 182, 0.24);
-  color: var(--text);
-  font-weight: 600;
-}
-
 .form-actions {
   grid-column: 1 / -1;
   display: flex;

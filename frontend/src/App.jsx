@@ -15,11 +15,6 @@ const ROLE_LABELS = {
   superadmin: 'Super admin'
 };
 
-const STORY_TYPES = [
-  { id: 'success', label: 'Success story' },
-  { id: 'fail', label: 'Fail story' }
-];
-
 const mockNewsletters = [
   {
     id: 'nl-001',
@@ -73,42 +68,36 @@ const initialGroups = [
   { id: 'g-3', name: 'Communication', canContribute: false, canApprove: true }
 ];
 
-function buildNewsletterDraft(contributions) {
+function buildNewsletterDraft(contributions, label) {
   if (!contributions.length) {
     return "Aucune contribution pour l'instant.\nInvitez vos équipes à partager leurs wins & fails 🎈";
   }
 
-  const successes = contributions.filter((c) => c.type === 'success');
-  const fails = contributions.filter((c) => c.type === 'fail');
-
   const lines = [];
   lines.push('📰  Newsletter – Draft');
   lines.push('');
+  if (label) {
+    lines.push(`Édition : ${label}`);
+    lines.push('');
+  }
   lines.push('Bonjour à toutes et tous,');
-  lines.push("Voici les temps forts du dernier cycle. N’hésitez pas à enrichir ce draft avant envoi.");
+  lines.push(
+    "Cette version rassemble les principaux faits marquants du mois, à partir des contributions envoyées par les équipes."
+  );
   lines.push('');
 
-  if (successes.length) {
-    lines.push('✨ Success stories');
-    successes.forEach((c, index) => {
-      lines.push(
-        `  ${index + 1}. ${c.title} — ${c.team || 'Équipe'} · ${c.impact || 'Impact à préciser.'}`
-      );
-    });
+  contributions.forEach((c, index) => {
+    const snippet =
+      c.text && c.text.length > 260
+        ? `${c.text.slice(0, 260).trim()}…`
+        : c.text;
+    lines.push(`${index + 1}. ${snippet}`);
     lines.push('');
-  }
+  });
 
-  if (fails.length) {
-    lines.push('🧨 Fail stories (apprises)');
-    fails.forEach((c, index) => {
-      lines.push(
-        `  ${index + 1}. ${c.title} — ${c.team || 'Équipe'} · Leçon clé : ${c.lesson || 'à documenter.'}`
-      );
-    });
-    lines.push('');
-  }
-
-  lines.push('Merci à toutes les équipes pour leur transparence et leur énergie. 💌');
+  lines.push(
+    'Merci à toutes les équipes pour le temps consacré à documenter ces éléments et pour la qualité des retours partagés.'
+  );
   return lines.join('\n');
 }
 
@@ -120,6 +109,13 @@ function App() {
   const [users, setUsers] = useState(initialUsers);
   const [groups, setGroups] = useState(initialGroups);
   const [newsletterDraft, setNewsletterDraft] = useState('');
+
+  const currentNewsletterLabel = useMemo(() => {
+    const now = new Date();
+    const month = now.toLocaleString('fr-FR', { month: 'long' });
+    const year = now.getFullYear();
+    return `Newsletter mensuelle · ${month} ${year}`;
+  }, []);
 
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => tab.roles.includes(role)),
@@ -145,15 +141,18 @@ function App() {
   };
 
   const handleGenerateDraft = () => {
-    const draft = buildNewsletterDraft(contributions);
+    const relevantContributions = contributions.filter(
+      (c) => c.newsletterLabel === currentNewsletterLabel
+    );
+    const draft = buildNewsletterDraft(relevantContributions, currentNewsletterLabel);
     console.info('[generator] newsletter_draft_generated', {
-      contributions: contributions.length
+      contributions: relevantContributions.length
     });
     setNewsletterDraft(draft);
 
     const article = {
       id: `nl-${Date.now()}`,
-      title: `Newsletter d’équipe – ${new Date().toLocaleDateString('fr-FR')}`,
+      title: currentNewsletterLabel,
       date: new Date().toISOString(),
       mood: 'générée automatiquement',
       audience: 'Toute l’organisation',
@@ -228,11 +227,17 @@ function App() {
       <main className="app-main">
         {currentTab.id === 'feed' && <FeedTab newsletters={newsletters} />}
         {currentTab.id === 'collect' && (
-          <CollectTab onCreate={handleCreateContribution} />
+          <CollectTab
+            targetLabel={currentNewsletterLabel}
+            onCreate={handleCreateContribution}
+          />
         )}
         {currentTab.id === 'generator' && (
           <GeneratorTab
-            contributions={contributions}
+            contributions={contributions.filter(
+              (c) => c.newsletterLabel === currentNewsletterLabel
+            )}
+            targetLabel={currentNewsletterLabel}
             draft={newsletterDraft}
             onGenerate={handleGenerateDraft}
           />
@@ -291,122 +296,41 @@ function FeedTab({ newsletters }) {
   );
 }
 
-function CollectTab({ onCreate }) {
-  const [form, setForm] = useState({
-    title: '',
-    type: 'success',
-    team: '',
-    impact: '',
-    lesson: '',
-    mood: ''
-  });
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+function CollectTab({ onCreate, targetLabel }) {
+  const [text, setText] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!form.title.trim()) return;
-    onCreate(form);
-    setForm({
-      title: '',
-      type: form.type,
-      team: '',
-      impact: '',
-      lesson: '',
-      mood: ''
+    if (!text.trim()) return;
+    onCreate({
+      newsletterLabel: targetLabel,
+      text
     });
+    setText('');
   };
 
   return (
     <section className="panel-card panel-card--wide">
       <header className="panel-header">
-        <h2>Partager une story</h2>
+        <h2>Partager les nouveautés du mois</h2>
         <p className="panel-subtitle">
-          Success ou fail, l’important c’est l’apprentissage. Le ton reste
-          bienveillant, concret et actionnable.
+          Un seul champ pour consigner les faits marquants, décisions, incidents
+          et apprentissages du mois.
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
-        <label className="field">
-          <span className="field-label">Titre</span>
-          <input
-            name="title"
-            type="text"
-            value={form.title}
-            onChange={handleChange}
-            placeholder="Ex. On a doublé le taux d’activation mobile"
-          />
-        </label>
-
-        <label className="field">
-          <span className="field-label">Type</span>
-          <div className="pill-switch">
-            {STORY_TYPES.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={
-                  form.type === t.id
-                    ? 'pill-switch-item pill-switch-item--active'
-                    : 'pill-switch-item'
-                }
-                onClick={() =>
-                  setForm((prev) => ({
-                    ...prev,
-                    type: t.id
-                  }))
-                }
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </label>
-
-        <label className="field">
-          <span className="field-label">Équipe / Service</span>
-          <input
-            name="team"
-            type="text"
-            value={form.team}
-            onChange={handleChange}
-            placeholder="Produit, Tech, Sales, People…"
-          />
+        <label className="field field--full">
+          <span className="field-label">Newsletter ciblée</span>
+          <div className="tag tag--soft">{targetLabel}</div>
         </label>
 
         <label className="field field--full">
-          <span className="field-label">Impact</span>
+          <span className="field-label">Nouveautés du mois</span>
           <textarea
-            name="impact"
             rows={3}
-            value={form.impact}
-            onChange={handleChange}
-            placeholder="Quel effet mesurable a eu cette story ? (chiffres, expérience client, équipe…)"
-          />
-        </label>
-
-        <label className="field field--full">
-          <span className="field-label">Leçon clé (optionnel)</span>
-          <textarea
-            name="lesson"
-            rows={3}
-            value={form.lesson}
-            onChange={handleChange}
-            placeholder="Ce qu’on referait / ne referait pas, les bonnes pratiques qui en sortent…"
-          />
-        </label>
-
-        <label className="field field--full">
-          <span className="field-label">Mood (optionnel)</span>
-          <input
-            name="mood"
-            type="text"
-            value={form.mood}
-            onChange={handleChange}
-            placeholder="Ex. radical honesty, celebratory, calm shipping…"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Résumez les faits marquants, décisions importantes, incidents et apprentissages à partager dans la newsletter."
           />
         </label>
 
@@ -414,9 +338,9 @@ function CollectTab({ onCreate }) {
           <button
             type="submit"
             className="primary-button"
-            disabled={!form.title.trim()}
+            disabled={!text.trim()}
           >
-            Envoyer la story
+            Envoyer les nouveautés
           </button>
           <p className="helper-text">
             Les contributions sont visibles par l’équipe communication / admin
@@ -428,7 +352,7 @@ function CollectTab({ onCreate }) {
   );
 }
 
-function GeneratorTab({ contributions, draft, onGenerate }) {
+function GeneratorTab({ contributions, targetLabel, draft, onGenerate }) {
   const hasContributions = contributions.length > 0;
 
   const handleCopy = () => {
@@ -449,36 +373,21 @@ function GeneratorTab({ contributions, draft, onGenerate }) {
         <header className="panel-header">
           <h2>Contributions à intégrer</h2>
           <p className="panel-subtitle">
-            Vue condensée des stories envoyées par les équipes.
+            Faits marquants saisis pour l’édition en cours.
           </p>
         </header>
         <div className="panel-body panel-body--list">
           {hasContributions ? (
             contributions.map((c) => (
               <div key={c.id} className="contribution-pill">
-                <div className="contribution-pill-header">
-                  <span
-                    className={
-                      c.type === 'success'
-                        ? 'tag tag--success'
-                        : 'tag tag--fail'
-                    }
-                  >
-                    {c.type === 'success' ? 'Success' : 'Fail'}
-                  </span>
-                  <span className="contribution-team">
-                    {c.team || 'Équipe à préciser'}
-                  </span>
-                </div>
-                <h3>{c.title}</h3>
-                {c.impact && (
-                  <p className="contribution-impact">{c.impact}</p>
-                )}
-                {c.lesson && (
-                  <p className="contribution-lesson">
-                    Leçon : <span>{c.lesson}</span>
-                  </p>
-                )}
+                <p className="contribution-team">
+                  {c.newsletterLabel || targetLabel}
+                </p>
+                <p className="contribution-impact">
+                  {(c.text && c.text.length > 220
+                    ? `${c.text.slice(0, 220).trim()}…`
+                    : c.text) || ''}
+                </p>
               </div>
             ))
           ) : (
@@ -494,8 +403,8 @@ function GeneratorTab({ contributions, draft, onGenerate }) {
         <header className="panel-header">
           <h2>Draft de newsletter</h2>
           <p className="panel-subtitle">
-            Généré automatiquement à partir des contributions reçues. À
-            retravailler avant envoi.
+            Généré automatiquement à partir des contributions reçues pour{' '}
+            {targetLabel}. À relire avant envoi.
           </p>
         </header>
         <div className="panel-body">
