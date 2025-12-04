@@ -664,7 +664,7 @@ function FeedTab({
                         }
                         aria-label={`${reaction.label} (${reactions[reaction.id] || 0})`}
                       >
-                        <span>{reaction.emoji}</span>
+                        <span className="reaction-icon">{reaction.emoji}</span>
                         <span className="reaction-count">
                           {reactions[reaction.id] || 0}
                         </span>
