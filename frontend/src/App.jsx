@@ -259,9 +259,6 @@ function FeedTab({ newsletters }) {
   return (
     <section className="panel-grid panel-grid--single">
       <article className="panel-card">
-        <header className="panel-header">
-          <h2>Fil</h2>
-        </header>
         <div className="panel-body panel-body--list">
           {newsletters.map((nl) => (
             <article key={nl.id} className="newsletter-article">
