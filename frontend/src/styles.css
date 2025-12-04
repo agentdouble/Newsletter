@@ -346,6 +346,30 @@ body {
   line-height: 1.7;
 }
 
+.newsletter-body h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.newsletter-body h2 {
+  margin: 14px 0 4px;
+  font-size: 15px;
+}
+
+.newsletter-body ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.newsletter-body li {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.newsletter-body .nl-intro {
+  margin-top: 4px;
+}
+
 .tag {
   font-size: 11px;
   padding: 3px 10px;

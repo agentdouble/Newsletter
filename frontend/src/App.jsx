@@ -95,14 +95,13 @@ function buildNewsletterDraft(contributions, label) {
   }
 
   const parts = [];
-  parts.push('<p><strong>Newsletter – Draft</strong></p>');
-  if (label) {
-    parts.push(`<p><em>${escapeHtml(label)}</em></p>`);
-  }
+  const safeLabel = label ? escapeHtml(label) : 'Newsletter interne';
+
+  parts.push(`<h1>${safeLabel}</h1>`);
   parts.push(
-    '<p>Bonjour à toutes et tous,</p>' +
-      '<p>Cette version rassemble les principaux faits marquants du mois, à partir des contributions envoyées par les équipes.</p>'
+    '<p class="nl-intro">Bonjour à toutes et tous, cette édition rassemble les principaux faits marquants du mois, à partir des contributions envoyées par les équipes.</p>'
   );
+  parts.push('<h2>Faits marquants du mois</h2>');
 
   const items = contributions.map((c, index) => {
     const snippet =
@@ -112,9 +111,10 @@ function buildNewsletterDraft(contributions, label) {
     return `<li>${escapeHtml(snippet)}</li>`;
   });
 
-  parts.push(`<ol>${items.join('')}</ol>`);
+  parts.push(`<ul>${items.join('')}</ul>`);
+  parts.push('<h2>À retenir pour les équipes</h2>');
   parts.push(
-    '<p>Merci à toutes les équipes pour le temps consacré à documenter ces éléments et pour la qualité des retours partagés.</p>'
+    '<p>Merci à toutes les équipes pour le temps consacré à documenter ces éléments et pour la qualité des retours partagés. N’hésitez pas à répondre à cette newsletter pour proposer des compléments ou poser des questions.</p>'
   );
 
   return parts.join('');
