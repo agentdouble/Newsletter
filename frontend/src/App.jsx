@@ -517,15 +517,18 @@ function FeedTab({
 
 function CollectTab({ onCreate, targetLabel }) {
   const [text, setText] = useState('');
+  const [authorName, setAuthorName] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!text.trim()) return;
     onCreate({
       newsletterLabel: targetLabel,
-      text
+      text,
+      author: authorName.trim() || 'Anonyme'
     });
     setText('');
+    setAuthorName('');
   };
 
   return (
@@ -538,6 +541,16 @@ function CollectTab({ onCreate, targetLabel }) {
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span className="field-label">Nom du contributeur</span>
+          <input
+            type="text"
+            value={authorName}
+            onChange={(event) => setAuthorName(event.target.value)}
+            placeholder="Nom ou équipe"
+          />
+        </label>
+
         <label className="field field--full">
           <span className="field-label">Newsletter ciblée</span>
           <div className="tag tag--soft">{targetLabel}</div>
@@ -596,15 +609,13 @@ function GeneratorTab({
       <article className="panel-card">
         <header className="panel-header">
           <h2>Contributions à intégrer</h2>
-          <p className="panel-subtitle">
-            Faits marquants saisis pour l’édition en cours.
-          </p>
         </header>
         <div className="panel-body panel-body--list">
           {hasContributions ? (
             contributions.map((c) => (
               <div key={c.id} className="contribution-pill">
                 <p className="contribution-team">
+                  {(c.author || '').trim() || 'Anonyme'} ·{' '}
                   {c.newsletterLabel || targetLabel}
                 </p>
                 <p className="contribution-impact">
