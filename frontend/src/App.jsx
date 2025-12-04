@@ -4,15 +4,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const ROLES = ['user', 'admin', 'superadmin'];
 
 const REACTIONS = [
-  { id: 'insight', emoji: '👍', label: 'Utile' },
-  { id: 'bravo', emoji: '👏', label: 'Bravo' },
-  { id: 'question', emoji: '❓', label: 'Question' }
+  { id: 'up', emoji: '👍', label: 'Pouce haut' },
+  { id: 'down', emoji: '👎', label: 'Pouce bas' }
 ];
 
 const REACTION_BASELINE = {
-  insight: 0,
-  bravo: 0,
-  question: 0
+  up: 0,
+  down: 0
 };
 
 const TABS = [
@@ -675,7 +673,7 @@ function FeedTab({
                       </button>
                     ))}
                     <span className="comment-count">
-                      💬 {comments.length}
+                      Commentaires {comments.length}
                     </span>
                   </div>
                 </div>
