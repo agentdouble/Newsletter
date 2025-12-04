@@ -591,7 +591,7 @@ function CollectTab({ onCreate, targetLabel }) {
           <span className="field-label">Nouveautés du mois</span>
           <textarea
             className="notepad-textarea"
-            rows={14}
+            rows={8}
             value={text}
             onChange={(event) => setText(event.target.value)}
             placeholder="Résumez les faits marquants, décisions importantes, incidents et apprentissages à partager dans la newsletter."
@@ -602,7 +602,7 @@ function CollectTab({ onCreate, targetLabel }) {
           <span className="field-label">Success story</span>
           <textarea
             className="notepad-textarea"
-            rows={8}
+            rows={5}
             value={successStory}
             onChange={(event) => setSuccessStory(event.target.value)}
             placeholder="Exemple : une expérimentation gagnante, un saut de performance, un apprentissage actionnable."
@@ -613,7 +613,7 @@ function CollectTab({ onCreate, targetLabel }) {
           <span className="field-label">Fail story</span>
           <textarea
             className="notepad-textarea"
-            rows={8}
+            rows={5}
             value={failStory}
             onChange={(event) => setFailStory(event.target.value)}
             placeholder="Exemple : un incident, un pari perdu ou une rétrospective qui a fait évoluer une pratique."
