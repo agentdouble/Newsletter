@@ -5,7 +5,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 ## Stack
 
 - Backend : Python (à réintroduire plus tard, non présent dans ce MVP)
-- Frontend : React + Vite (`frontend/`)
+- Frontend : React + Vite (`frontend/`), `react-router-dom` pour les routes frontend.
 
 ## Fonctionnalités du MVP (frontend uniquement)
 
@@ -44,4 +44,5 @@ Pour rester aligné avec la structure cible (backend + frontend), utilisez toujo
 
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
+- Header compact et sticky (toujours visible) avec navigation par onglets synchronisée avec les routes (`/newsletter/fil`, `/newsletter/collect`, `/newsletter/generateur`, `/newsletter/admin`).
 - Les logs (`console.info`) sont ajoutés uniquement sur les actions clés (changement de rôle, création de contribution, génération d’une newsletter).
