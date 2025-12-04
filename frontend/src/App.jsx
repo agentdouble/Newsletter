@@ -876,7 +876,6 @@ function CollectTab({ onCreate, targetLabel }) {
   const [text, setText] = useState('');
   const [successStory, setSuccessStory] = useState('');
   const [failStory, setFailStory] = useState('');
-  const [authorName, setAuthorName] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -884,18 +883,16 @@ function CollectTab({ onCreate, targetLabel }) {
     const success = successStory.trim();
     const fail = failStory.trim();
     if (!main && !success && !fail) return;
-    const author = authorName.trim() || 'Anonyme';
     onCreate({
       newsletterLabel: targetLabel,
       text: main,
       successStory: success,
       failStory: fail,
-      author
+      author: 'Utilisateur connecté'
     });
     setText('');
     setSuccessStory('');
     setFailStory('');
-    setAuthorName('');
   };
 
   const isSubmitDisabled =
@@ -907,20 +904,11 @@ function CollectTab({ onCreate, targetLabel }) {
         <h2>Partager les nouveautés du mois</h2>
         <p className="panel-subtitle">
           Trois blocs pour consigner les faits marquants, une success story et
-          une fail story utiles aux autres équipes.
+          une fail story utiles aux autres équipes. Votre compte connecté signe
+          automatiquement la contribution.
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
-        <label className="field">
-          <span className="field-label">Nom du contributeur</span>
-          <input
-            type="text"
-            value={authorName}
-            onChange={(event) => setAuthorName(event.target.value)}
-            placeholder="Nom ou équipe"
-          />
-        </label>
-
         <label className="field field--full">
           <span className="field-label">Newsletter ciblée</span>
           <div className="tag tag--soft">{targetLabel}</div>
