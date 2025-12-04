@@ -1,11 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Chart, ArcElement, DoughnutController, Tooltip, Legend } from 'chart.js';
 import { useLocation, useNavigate } from 'react-router-dom';
+
+Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
 const ROLES = ['user', 'admin', 'superadmin'];
 
 const TABS = [
   { id: 'feed', label: 'Fil', roles: ROLES },
   { id: 'collect', label: 'Collect', roles: ROLES },
+  { id: 'contributions', label: 'Contributions', roles: ROLES },
   { id: 'generator', label: 'Générateur', roles: ['admin', 'superadmin'] },
   { id: 'admin', label: 'Admin', roles: ['superadmin'] }
 ];
@@ -13,6 +17,7 @@ const TABS = [
 const TAB_ROUTES = {
   feed: '/newsletter/fil',
   collect: '/newsletter/collect',
+  contributions: '/newsletter/contribution',
   generator: '/newsletter/generateur',
   admin: '/newsletter/admin'
 };
@@ -401,6 +406,13 @@ function App() {
             onCreate={handleCreateContribution}
           />
         )}
+        {currentTab.id === 'contributions' && (
+          <ContributionTab
+            contributions={contributions}
+            users={users}
+            targetLabel={currentNewsletterLabel}
+          />
+        )}
         {currentTab.id === 'generator' && (
           <GeneratorTab
             contributions={visibleGeneratorContributions}
@@ -551,6 +563,7 @@ function CollectTab({ onCreate, targetLabel }) {
   const [text, setText] = useState('');
   const [successStory, setSuccessStory] = useState('');
   const [failStory, setFailStory] = useState('');
+  const [authorName, setAuthorName] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -558,15 +571,18 @@ function CollectTab({ onCreate, targetLabel }) {
     const success = successStory.trim();
     const fail = failStory.trim();
     if (!main && !success && !fail) return;
+    const author = authorName.trim() || 'Anonyme';
     onCreate({
       newsletterLabel: targetLabel,
       text: main,
       successStory: success,
-      failStory: fail
+      failStory: fail,
+      author
     });
     setText('');
     setSuccessStory('');
     setFailStory('');
+    setAuthorName('');
   };
 
   const isSubmitDisabled =
@@ -582,6 +598,16 @@ function CollectTab({ onCreate, targetLabel }) {
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span className="field-label">Nom du contributeur</span>
+          <input
+            type="text"
+            value={authorName}
+            onChange={(event) => setAuthorName(event.target.value)}
+            placeholder="Nom ou équipe"
+          />
+        </label>
+
         <label className="field field--full">
           <span className="field-label">Newsletter ciblée</span>
           <div className="tag tag--soft">{targetLabel}</div>
@@ -630,6 +656,160 @@ function CollectTab({ onCreate, targetLabel }) {
           </button>
         </div>
       </form>
+    </section>
+  );
+}
+
+function ContributionTab({ contributions, users, targetLabel }) {
+  const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+
+  const scopedContributions = useMemo(
+    () =>
+      contributions.filter(
+        (c) => (c.newsletterLabel || '') === (targetLabel || '')
+      ),
+    [contributions, targetLabel]
+  );
+
+  const uniqueContributors = useMemo(() => {
+    const names = scopedContributions
+      .map((c) => (c.author || 'Anonyme').trim().toLowerCase())
+      .filter(Boolean);
+    return Array.from(new Set(names));
+  }, [scopedContributions]);
+
+  const contributorCount = uniqueContributors.length;
+  const totalUsers = users.length;
+  const participationRate = totalUsers
+    ? Math.round((contributorCount / totalUsers) * 100)
+    : 0;
+  const remaining = Math.max(totalUsers - contributorCount, 0);
+
+  useEffect(() => {
+    const node = chartRef.current;
+    if (!node) return undefined;
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+      chartInstanceRef.current = null;
+    }
+
+    const data = [contributorCount, remaining];
+    const ctx = node.getContext('2d');
+    if (!ctx) return undefined;
+
+    chartInstanceRef.current = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Contributeurs', 'Autres membres'],
+        datasets: [
+          {
+            data,
+            backgroundColor: ['#000000', '#e0e0e0'],
+            borderWidth: 0
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        cutout: '70%',
+        animation: false
+      }
+    });
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, [contributorCount, remaining]);
+
+  useEffect(() => {
+    console.info('[contributions] tab_opened', {
+      contributors: contributorCount,
+      totalUsers,
+      participationRate
+    });
+  }, [contributorCount, participationRate, totalUsers]);
+
+  return (
+    <section className="panel-grid panel-grid--single">
+      <article className="panel-card">
+        <header className="panel-header">
+          <h2>Contributions en cours</h2>
+          <p className="panel-subtitle">
+            Vue d’ensemble des contributions pour {targetLabel} et taux de
+            participation.
+          </p>
+        </header>
+
+        <div className="contribution-stats">
+          <div className="chart-box">
+            <canvas ref={chartRef} width="140" height="140" />
+          </div>
+          <div className="stats-metrics">
+            <p className="stats-metric">{participationRate}%</p>
+            <p className="stats-helper">taux de participation unique</p>
+            <p className="stats-detail">
+              {contributorCount} contributeur(s) / {totalUsers} membre(s)
+            </p>
+          </div>
+        </div>
+
+        <div className="panel-body panel-body--list">
+          {scopedContributions.length ? (
+            scopedContributions.map((c) => {
+              const mainSnippet = makeSnippet(c.text, 240);
+              const successSnippet = makeSnippet(c.successStory, 200);
+              const failSnippet = makeSnippet(c.failStory, 200);
+              const hasContent =
+                Boolean(mainSnippet) ||
+                Boolean(successSnippet) ||
+                Boolean(failSnippet);
+
+              return (
+                <div key={c.id} className="contribution-pill">
+                  <p className="contribution-team">
+                    {(c.author || '').trim() || 'Anonyme'} ·{' '}
+                    {c.newsletterLabel || targetLabel || 'Newsletter'}
+                  </p>
+                  {hasContent ? (
+                    <>
+                      {mainSnippet && (
+                        <p className="contribution-impact">{mainSnippet}</p>
+                      )}
+                      {successSnippet && (
+                        <p className="contribution-impact">
+                          <strong>Success&nbsp;:</strong> {successSnippet}
+                        </p>
+                      )}
+                      {failSnippet && (
+                        <p className="contribution-impact">
+                          <strong>Fail&nbsp;:</strong> {failSnippet}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="contribution-impact">
+                      Aucune note détaillée fournie.
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <p className="empty-state">
+              Aucune contribution enregistrée pour cette édition.
+            </p>
+          )}
+        </div>
+      </article>
     </section>
   );
 }
@@ -713,24 +893,6 @@ function GeneratorTab({
           </p>
         </header>
         <div className="panel-body">
-          <div className="generator-actions">
-            <button
-              type="button"
-              className="primary-button"
-              onClick={onGenerate}
-              disabled={!hasContributions}
-            >
-              Générer un draft
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={handlePublishClick}
-              disabled={!draftHtml}
-            >
-              Publier dans le fil
-            </button>
-          </div>
           <div className="form-grid form-grid--compact">
             <label className="field field--full">
               <span className="field-label">Image (URL optionnelle)</span>
@@ -749,6 +911,24 @@ function GeneratorTab({
             suppressContentEditableWarning
             dangerouslySetInnerHTML={{ __html: draftHtml || '' }}
           />
+          <div className="generator-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={onGenerate}
+              disabled={!hasContributions}
+            >
+              Générer un draft
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handlePublishClick}
+              disabled={!draftHtml}
+            >
+              Publier dans le fil
+            </button>
+          </div>
         </div>
       </article>
     </section>
