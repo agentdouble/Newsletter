@@ -645,76 +645,77 @@ function FeedTab({
                       <p className="newsletter-snippet">{snippet}</p>
                     )}
                   </div>
+                  <div className="newsletter-footer">
+                    <div
+                      className="newsletter-engagement"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="reaction-row">
+                        {REACTIONS.map((reaction) => {
+                          const reactionClass =
+                            reaction.id === 'down'
+                              ? 'reaction-button reaction-button--down'
+                              : 'reaction-button';
+                          return (
+                            <button
+                              key={reaction.id}
+                              type="button"
+                              className={reactionClass}
+                              onClick={(event) =>
+                                handleReactionClick(event, nl.id, reaction.id)
+                              }
+                              aria-label={`${reaction.label} (${reactions[reaction.id] || 0})`}
+                            >
+                              <span className="reaction-icon" aria-hidden="true">
+                                <svg
+                                  viewBox="0 0 16 16"
+                                  focusable="false"
+                                  role="presentation"
+                                >
+                                  <path
+                                    d="M7 2 5.5 6.5H3a1 1 0 0 0-1 1v2.5A1 1 0 0 0 3 11h2v3.5A1.5 1.5 0 0 0 6.5 16h5a1.5 1.5 0 0 0 1.43-1.05l1.5-5A1.5 1.5 0 0 0 13.98 8H10V3.5A1.5 1.5 0 0 0 8.5 2Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.2"
+                                    strokeLinejoin="round"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              </span>
+                              <span className="reaction-count">
+                                {reactions[reaction.id] || 0}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        <span
+                          className="comment-count"
+                          aria-label={`Commentaires ${comments.length}`}
+                        >
+                          <span className="comment-icon" aria-hidden="true">
+                            <svg
+                              viewBox="0 0 20 20"
+                              focusable="false"
+                              role="presentation"
+                            >
+                              <path
+                                d="M4.5 4.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-5.5L7 15.5v-3H4.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Z"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.2"
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                          </span>
+                          {comments.length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {!isActive && imageNode}
-
-                <div
-                  className="newsletter-engagement"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="reaction-row">
-                    {REACTIONS.map((reaction) => {
-                      const reactionClass =
-                        reaction.id === 'down'
-                          ? 'reaction-button reaction-button--down'
-                          : 'reaction-button';
-                      return (
-                      <button
-                        key={reaction.id}
-                        type="button"
-                        className={reactionClass}
-                        onClick={(event) =>
-                          handleReactionClick(event, nl.id, reaction.id)
-                        }
-                        aria-label={`${reaction.label} (${reactions[reaction.id] || 0})`}
-                      >
-                        <span className="reaction-icon" aria-hidden="true">
-                          <svg
-                            viewBox="0 0 16 16"
-                            focusable="false"
-                            role="presentation"
-                          >
-                            <path
-                              d="M7 2 5.5 6.5H3a1 1 0 0 0-1 1v2.5A1 1 0 0 0 3 11h2v3.5A1.5 1.5 0 0 0 6.5 16h5a1.5 1.5 0 0 0 1.43-1.05l1.5-5A1.5 1.5 0 0 0 13.98 8H10V3.5A1.5 1.5 0 0 0 8.5 2Z"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.2"
-                              strokeLinejoin="round"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        </span>
-                        <span className="reaction-count">
-                          {reactions[reaction.id] || 0}
-                        </span>
-                      </button>
-                    );
-                    })}
-                    <span
-                      className="comment-count"
-                      aria-label={`Commentaires ${comments.length}`}
-                    >
-                      <span className="comment-icon" aria-hidden="true">
-                        <svg
-                          viewBox="0 0 20 20"
-                          focusable="false"
-                          role="presentation"
-                        >
-                          <path
-                            d="M4.5 4.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-5.5L7 15.5v-3H4.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Z"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinejoin="round"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </span>
-                      {comments.length}
-                    </span>
-                  </div>
-                </div>
 
                 {isActive && (
                   <div className="comment-stack">

@@ -455,6 +455,12 @@ body {
   flex-wrap: wrap;
 }
 
+.newsletter-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
 .reaction-button {
   border: 0;
   border-radius: 0;
