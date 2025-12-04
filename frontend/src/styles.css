@@ -328,7 +328,8 @@ body {
 }
 
 .newsletter-article--active {
-  background: #f9f9f9;
+  background: transparent;
+  border-bottom: 0;
 }
 
 .newsletter-article + .newsletter-article {

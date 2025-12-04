@@ -415,6 +415,7 @@ function FeedTab({
   const listNewsletters = selectedNewsletter
     ? [selectedNewsletter]
     : visibleNewsletters;
+  const isDetailView = Boolean(selectedNewsletter);
 
   return (
     <section className="panel-grid panel-grid--single">
@@ -452,10 +453,14 @@ function FeedTab({
                 key={nl.id}
                 className={
                   isActive
-                    ? 'newsletter-article newsletter-article--active newsletter-article--clickable'
+                    ? 'newsletter-article newsletter-article--active'
                     : 'newsletter-article newsletter-article--clickable'
                 }
-                onClick={() => onOpenNewsletter && onOpenNewsletter(nl.id)}
+                onClick={
+                  isDetailView || !onOpenNewsletter
+                    ? undefined
+                    : () => onOpenNewsletter(nl.id)
+                }
               >
                 <header className="newsletter-article-header">
                   <div>
