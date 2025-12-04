@@ -314,6 +314,13 @@ body {
   align-items: center;
 }
 
+.admin-tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
 .panel-header--feed h2 {
   font-size: 20px;
 }
