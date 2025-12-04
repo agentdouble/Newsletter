@@ -855,6 +855,13 @@ body {
   align-items: flex-end;
 }
 
+.group-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;

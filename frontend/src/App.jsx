@@ -301,14 +301,6 @@ function App() {
     );
   };
 
-  const handleToggleGroupPermission = (groupId, key) => {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.id === groupId ? { ...g, [key]: !g[key] } : g
-      )
-    );
-  };
-
   const handleUpdateGroupAdmins = (groupId, adminIds) => {
     console.info('[admin] group_admins_updated', { groupId, adminIds });
     setGroups((prev) =>
@@ -443,7 +435,6 @@ function App() {
             defaultNewsletterTitle={currentNewsletterLabel}
             onAddUser={handleAddUser}
             onAddGroup={handleAddGroup}
-            onToggleGroupPermission={handleToggleGroupPermission}
             onUpdateGroupAdmins={handleUpdateGroupAdmins}
             onUpdateUserGroups={handleUpdateUserGroups}
             onDeleteGroup={handleDeleteGroup}
@@ -742,7 +733,6 @@ function AdminTab({
   defaultNewsletterTitle,
   onAddUser,
   onAddGroup,
-  onToggleGroupPermission,
   onUpdateGroupAdmins,
   onUpdateUserGroups,
   onDeleteGroup,
@@ -871,10 +861,7 @@ function AdminTab({
                     (user.groupIds || []).includes(nl.groupId)
                   )
                 : users;
-              const contributorsAllowed = nl.groupId
-                ? Boolean(group?.canContribute)
-                : true;
-              const contributorUsers = contributorsAllowed ? relatedUsers : [];
+              const contributorUsers = relatedUsers;
               const adminUsersFromGroup = (group?.adminIds || [])
                 .map((id) => users.find((u) => u.id === id))
                 .filter(Boolean);
@@ -900,32 +887,15 @@ function AdminTab({
                   <div className="admin-newsletter-line">
                     <span className="admin-line-label">Contributeurs</span>
                     <div className="admin-chip-row">
-                      {contributorsAllowed ? (
-                        contributorUsers.length ? (
-                          contributorUsers.map((user) => (
-                            <span key={user.id} className="tag tag--soft">
-                              {user.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="helper-text">
-                            Aucun contributeur rattaché
+                      {contributorUsers.length ? (
+                        contributorUsers.map((user) => (
+                          <span key={user.id} className="tag tag--soft">
+                            {user.name}
                           </span>
-                        )
+                        ))
                       ) : (
                         <span className="helper-text">
-                          Collecte bloquée pour ce groupe
-                        </span>
-                      )}
-                      {group && (
-                        <span
-                          className={
-                            group.canContribute
-                              ? 'tag tag--success'
-                              : 'tag tag--fail'
-                          }
-                        >
-                          Collecte {group.canContribute ? 'ouverte' : 'fermée'}
+                          Aucun contributeur rattaché
                         </span>
                       )}
                     </div>
@@ -943,17 +913,6 @@ function AdminTab({
                       ) : (
                         <span className="helper-text">
                           Aucun admin rattaché
-                        </span>
-                      )}
-                      {group && (
-                        <span
-                          className={
-                            group.canApprove
-                              ? 'tag tag--success'
-                              : 'tag tag--fail'
-                          }
-                        >
-                          Publication {group.canApprove ? 'autorisée' : 'bloquée'}
                         </span>
                       )}
                     </div>
@@ -1084,7 +1043,7 @@ function AdminTab({
         <header className="panel-header">
           <h2>Groupes & droits</h2>
           <p className="panel-subtitle">
-            Préfiguration simple des permissions et des admins par équipe.
+            Choisissez les admins pour chaque groupe à partir des membres.
           </p>
         </header>
         <div className="panel-body panel-body--list">
@@ -1093,31 +1052,16 @@ function AdminTab({
               <div>
                 <p className="group-name">{group.name}</p>
                 <p className="group-meta">
-                  Collecte : {group.canContribute ? 'autorisée' : 'bloquée'} ·
-                  Validation : {group.canApprove ? 'autorisée' : 'bloquée'}
+                  {(() => {
+                    const members = users.filter((user) =>
+                      (user.groupIds || []).includes(group.id)
+                    );
+                    if (!members.length) return 'Aucun membre dans ce groupe';
+                    return members.map((m) => m.name).join(', ');
+                  })()}
                 </p>
               </div>
               <div className="group-toggle-row">
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={group.canContribute}
-                    onChange={() =>
-                      onToggleGroupPermission(group.id, 'canContribute')
-                    }
-                  />
-                  <span className="toggle-label">Collect</span>
-                </label>
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={group.canApprove}
-                    onChange={() =>
-                      onToggleGroupPermission(group.id, 'canApprove')
-                    }
-                  />
-                  <span className="toggle-label">Valider</span>
-                </label>
                 <button
                   type="button"
                   className="secondary-button group-delete-button"
@@ -1125,44 +1069,45 @@ function AdminTab({
                 >
                   Supprimer
                 </button>
-                <details className="user-groups-dropdown">
-                  <summary>Admins du groupe</summary>
-                  <div className="user-groups-list">
-                    {(() => {
-                      const adminCandidates = users.filter(
-                        (u) => u.role === 'admin' || u.role === 'superadmin'
+                <div className="group-admin-list">
+                  {(() => {
+                    const members = users.filter((user) =>
+                      (user.groupIds || []).includes(group.id)
+                    );
+                    const adminIds = group.adminIds || [];
+                    const extras = (adminIds || [])
+                      .map((id) => users.find((u) => u.id === id))
+                      .filter((u) => u && !members.includes(u));
+                    const candidates = [...members, ...extras];
+                    if (!candidates.length) {
+                      return (
+                        <span className="helper-text">
+                          Ajoutez d’abord des membres à ce groupe
+                        </span>
                       );
-                      const adminIds = group.adminIds || [];
-                      if (!adminCandidates.length) {
-                        return (
-                          <span className="helper-text">
-                            Aucun admin disponible
+                    }
+                    return candidates.map((user) => {
+                      const checked = adminIds.includes(user.id);
+                      return (
+                        <label key={user.id} className="toggle">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? adminIds.filter((id) => id !== user.id)
+                                : [...adminIds, user.id];
+                              onUpdateGroupAdmins(group.id, next);
+                            }}
+                          />
+                          <span className="toggle-label">
+                            {user.name} · {ROLE_LABELS[user.role]}
                           </span>
-                        );
-                      }
-                      return adminCandidates.map((user) => {
-                        const checked = adminIds.includes(user.id);
-                        return (
-                          <label key={user.id} className="toggle">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => {
-                                const next = checked
-                                  ? adminIds.filter((id) => id !== user.id)
-                                  : [...adminIds, user.id];
-                                onUpdateGroupAdmins(group.id, next);
-                              }}
-                            />
-                            <span className="toggle-label">
-                              {user.name} · {ROLE_LABELS[user.role]}
-                            </span>
-                          </label>
-                        );
-                      });
-                    })()}
-                  </div>
-                </details>
+                        </label>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
             </div>
           ))}
