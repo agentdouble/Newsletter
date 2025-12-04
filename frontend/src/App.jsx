@@ -260,10 +260,7 @@ function FeedTab({ newsletters }) {
     <section className="panel-grid panel-grid--single">
       <article className="panel-card">
         <header className="panel-header">
-          <h2>Fil des newsletters</h2>
-          <p className="panel-subtitle">
-            Vue publique des newsletters déjà envoyées.
-          </p>
+          <h2>Fil</h2>
         </header>
         <div className="panel-body panel-body--list">
           {newsletters.map((nl) => (
