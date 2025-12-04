@@ -299,6 +299,10 @@ function App() {
     setUsers((prev) => [...prev, entry]);
   };
 
+  const handleResetUserPassword = (userId) => {
+    console.info('[admin] user_password_reset', { userId });
+  };
+
   const handleUpdateUserGroups = (userId, groupIds) => {
     console.info('[admin] user_groups_updated', { userId, groupIds });
     setUsers((prev) =>
@@ -441,6 +445,7 @@ function App() {
             groups={groups}
             defaultNewsletterTitle={currentNewsletterLabel}
             onAddUser={handleAddUser}
+            onResetUserPassword={handleResetUserPassword}
             onAddGroup={handleAddGroup}
             onUpdateGroupAdmins={handleUpdateGroupAdmins}
             onUpdateUserGroups={handleUpdateUserGroups}
@@ -739,6 +744,7 @@ function AdminTab({
   groups,
   defaultNewsletterTitle,
   onAddUser,
+  onResetUserPassword,
   onAddGroup,
   onUpdateGroupAdmins,
   onUpdateUserGroups,
@@ -995,6 +1001,13 @@ function AdminTab({
                   </div>
                 </div>
                 <div className="user-side">
+                  <button
+                    type="button"
+                    className="secondary-button user-reset-button"
+                    onClick={() => onResetUserPassword(user.id)}
+                  >
+                    Reset mdp
+                  </button>
                   <details className="user-groups-dropdown">
                     <summary>Groupes</summary>
                     <div className="user-groups-list">
