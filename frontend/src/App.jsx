@@ -907,7 +907,7 @@ function AdminTab({
                       {adminPublishers.length ? (
                         adminPublishers.map((user) => (
                           <span key={user.id} className="tag tag--soft">
-                            {user.name} · {ROLE_LABELS[user.role]}
+                            {user.name} · Admin newsletter
                           </span>
                         ))
                       ) : (
@@ -1101,7 +1101,7 @@ function AdminTab({
                             }}
                           />
                           <span className="toggle-label">
-                            {user.name} · {ROLE_LABELS[user.role]}
+                            {user.name} · {checked ? 'Admin newsletter' : 'Utilisateur'}
                           </span>
                         </label>
                       );
