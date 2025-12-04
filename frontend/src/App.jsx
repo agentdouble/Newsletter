@@ -421,10 +421,6 @@ function FeedTab({
     <section className="panel-grid panel-grid--single">
       <article className="panel-card panel-card--feed">
         <header className="panel-header panel-header--feed">
-          <h2>Fil des newsletters internes</h2>
-          <p className="panel-subtitle">
-            Dernières éditions prêtes à être partagées · {activeGroupName}.
-          </p>
           {selectedNewsletter && (
             <button
               type="button"
