@@ -263,7 +263,9 @@ body {
 
 .newsletter-chip-audience {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-soft);
 }
 
@@ -275,9 +277,9 @@ body {
 }
 
 .newsletter-article {
-  padding: 14px 16px;
+  padding: 20px 24px;
   border-radius: 22px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-strong);
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -293,7 +295,7 @@ body {
 
 .newsletter-article-header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .newsletter-meta-column {
@@ -305,8 +307,8 @@ body {
 
 .newsletter-body p {
   margin: 4px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .mood-pill {

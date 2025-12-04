@@ -28,11 +28,17 @@ const mockNewsletters = [
     mood: 'optimiste',
     audience: 'Produit & Growth',
     body:
-      "Cette semaine, l’équipe Produit a partagé plusieurs avancées qui changent concrètement la vie des utilisateurs. " +
-      "Le nouveau parcours d’onboarding est désormais disponible pour 100 % des comptes, avec un taux d’activation en hausse. " +
-      "Côté incident, deux sujets majeurs ont été identifiés puis corrigés, ce qui nous permet de stabiliser davantage la plateforme.\n\n" +
-      "Merci à toutes les équipes impliquées dans ces améliorations : l’énergie collective se ressent dans les retours clients et dans les métriques. " +
-      "Les prochaines semaines seront dédiées à lisser encore l’expérience et à documenter les bonnes pratiques qui ont émergé."
+      "Cette édition synthétise les principaux enseignements partagés par les équipes Produit au cours du dernier cycle. " +
+      "L’objectif est de donner une vue claire des décisions structurantes, des résultats obtenus et des chantiers encore ouverts, " +
+      "afin que chaque équipe puisse se situer dans la trajectoire globale du produit.\n\n" +
+      "Sur le volet activation, le nouveau parcours d’onboarding a été progressivement déployé à l’ensemble des comptes. " +
+      "Les premiers indicateurs montrent une hausse significative du taux d’activation, portée notamment par une meilleure mise en avant des cas d’usage clés " +
+      "et par une simplification des premiers écrans. Les retours utilisateurs confirment que la compréhension de la proposition de valeur est plus rapide.\n\n" +
+      "Parallèlement, deux incidents majeurs ont été identifiés puis corrigés, avec un impact limité mais réel sur l’expérience. " +
+      "Les équipes ont mis en place des garde-fous supplémentaires et un suivi rapproché des métriques de fiabilité sur les flux concernés. " +
+      "Une synthèse détaillée des actions menées sera partagée dans la documentation produit afin de capitaliser sur ces enseignements.\n\n" +
+      "Les prochaines semaines seront consacrées à consolider ces avancées : suivi des indicateurs d’activation, affinage des parcours secondaires " +
+      "et amélioration du support in-app. L’ambition reste la même : proposer une expérience simple, lisible et cohérente pour l’ensemble des utilisateurs."
   },
   {
     id: 'nl-002',
@@ -41,11 +47,17 @@ const mockNewsletters = [
     mood: 'radical honesty',
     audience: 'Tech & Ops',
     body:
-      "Du côté de la plateforme, l’incident API du 21 janvier a occupé une grande partie des discussions. " +
-      "L’équipe a pris le temps de documenter ce qui s’est passé, ce qui a permis de clarifier la chaîne de décision et de renforcer les alertes. " +
-      "Un runbook dédié est désormais partagé avec toutes les personnes d’astreinte.\n\n" +
-      "Au-delà de l’incident lui-même, l’enjeu principal reste la capacité à apprendre vite et ensemble. " +
-      "Cette newsletter rassemble les retours de chacun et chacune, pour transformer un fail isolé en enseignements utiles pour toute l’organisation."
+      "Cette édition est centrée sur l’analyse des incidents récents et sur les mesures prises pour renforcer la robustesse de la plateforme. " +
+      "Elle vise à rendre visibles les arbitrages effectués, les points de vigilance identifiés et les engagements pris vis-à-vis des équipes consommatrices des services.\n\n" +
+      "L’incident API du 21 janvier a servi de point d’ancrage à plusieurs échanges structurés : revue détaillée de la chronologie, clarification des responsabilités, " +
+      "et mise à jour des procédures d’escalade. Ce travail partagé a permis de réduire les zones d’ambiguïté sur la prise de décision et de rendre les attentes explicites " +
+      "en matière de communication en cours d’incident.\n\n" +
+      "Un runbook dédié a été rédigé puis diffusé à l’ensemble des personnes d’astreinte. Il documente les signaux faibles à surveiller, " +
+      "les premiers gestes à effectuer en cas de dégradation des indicateurs et les canaux à utiliser pour informer les équipes impactées. " +
+      "Les prochaines itérations viseront à simplifier encore ce runbook pour le rendre immédiatement actionnable, y compris dans les situations de forte charge.\n\n" +
+      "Au-delà de ce cas particulier, l’enjeu principal reste d’ancrer une culture de partage des incidents, non pas comme des échecs individuels, " +
+      "mais comme des occasions structurées d’amélioration collective. Les retours des différentes équipes sont intégrés dans la roadmap de fiabilisation " +
+      "et serviront de base aux prochains exercices de simulation d’incident."
   }
 ];
 
