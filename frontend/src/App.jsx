@@ -677,10 +677,11 @@ function FeedTab({
                           >
                             <path
                               d="M7 2 5.5 6.5H3a1 1 0 0 0-1 1v2.5A1 1 0 0 0 3 11h2v3.5A1.5 1.5 0 0 0 6.5 16h5a1.5 1.5 0 0 0 1.43-1.05l1.5-5A1.5 1.5 0 0 0 13.98 8H10V3.5A1.5 1.5 0 0 0 8.5 2Z"
-                              fill="currentColor"
+                              fill="none"
                               stroke="currentColor"
-                              strokeWidth="0.7"
+                              strokeWidth="1.2"
                               strokeLinejoin="round"
+                              strokeLinecap="round"
                             />
                           </svg>
                         </span>
@@ -690,8 +691,27 @@ function FeedTab({
                       </button>
                     );
                     })}
-                    <span className="comment-count">
-                      Commentaires {comments.length}
+                    <span
+                      className="comment-count"
+                      aria-label={`Commentaires ${comments.length}`}
+                    >
+                      <span className="comment-icon" aria-hidden="true">
+                        <svg
+                          viewBox="0 0 20 20"
+                          focusable="false"
+                          role="presentation"
+                        >
+                          <path
+                            d="M4.5 4.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-5.5L7 15.5v-3H4.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Z"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </span>
+                      {comments.length}
                     </span>
                   </div>
                 </div>

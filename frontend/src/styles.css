@@ -503,6 +503,18 @@ body {
   gap: 4px;
 }
 
+.comment-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+}
+
+.comment-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
 .comment-stack {
   margin-top: 16px;
   padding-top: 12px;
