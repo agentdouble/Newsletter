@@ -182,10 +182,28 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="app-header-main">
-          <div className="logo-pill">
-            <span className="logo-dot" />
-            <span className="logo-text">Anjanews</span>
+        <div className="app-header-top">
+          <div className="app-header-main">
+            <div className="logo-pill">
+              <span className="logo-dot" />
+              <span className="logo-text">Anjanews</span>
+            </div>
+          </div>
+          <div className="header-controls">
+            <div className="role-switch">
+              <span className="role-label">Rôle</span>
+              <select
+                className="role-select"
+                value={role}
+                onChange={handleRoleChange}
+              >
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         <nav className="tab-nav">
@@ -202,22 +220,6 @@ function App() {
             </button>
           ))}
         </nav>
-        <div className="header-controls">
-          <div className="role-switch">
-            <span className="role-label">Rôle</span>
-            <select
-              className="role-select"
-              value={role}
-              onChange={handleRoleChange}
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
       </header>
 
       <main className="app-main">

@@ -58,14 +58,21 @@ body {
 
 .app-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   padding: 18px 22px;
   border-radius: var(--radius-xl);
   background: #ffffff;
   border: 1px solid var(--border-subtle);
   backdrop-filter: blur(18px);
   box-shadow: 0 18px 40px rgba(93, 32, 138, 0.15);
+  gap: 16px;
+}
+
+.app-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
 }
 
@@ -134,15 +141,12 @@ body {
 }
 
 .tab-nav {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 14px 30px rgba(83, 36, 124, 0.16);
-  align-self: center;
+  padding: 6px 4px 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .tab-button {
