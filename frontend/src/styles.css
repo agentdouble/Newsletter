@@ -19,6 +19,7 @@
   --transition-fast: 0.16s ease-out;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
+  --font-serif: 'Georgia', 'Times New Roman', serif;
 }
 
 *,
@@ -259,6 +260,11 @@ body {
   font-size: 20px;
 }
 
+.feed-back-button {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
 .panel-header--feed .panel-subtitle {
   font-size: 12px;
 }
@@ -313,6 +319,18 @@ body {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.newsletter-article--clickable {
+  cursor: pointer;
+}
+
+.newsletter-article--clickable:hover .newsletter-article-header h3 {
+  text-decoration: underline;
+}
+
+.newsletter-article--active {
+  background: #f9f9f9;
+}
+
 .newsletter-article + .newsletter-article {
   margin-top: 0;
 }
@@ -330,7 +348,8 @@ body {
 
 .newsletter-article-header h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .newsletter-meta-column {
@@ -344,16 +363,19 @@ body {
   margin: 4px 0 0;
   font-size: 14px;
   line-height: 1.7;
+  font-family: var(--font-serif);
 }
 
 .newsletter-body h1 {
   margin: 0 0 6px;
   font-size: 20px;
+  font-family: var(--font-serif);
 }
 
 .newsletter-body h2 {
   margin: 14px 0 4px;
   font-size: 15px;
+  font-family: var(--font-serif);
 }
 
 .newsletter-body ul {
@@ -615,7 +637,7 @@ body {
   border-radius: 0;
   border: 1px solid var(--border-strong);
   padding: 10px 12px;
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
   font-size: 13px;
   background: #ffffff;
   min-height: 60vh;

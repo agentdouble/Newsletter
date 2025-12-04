@@ -156,6 +156,15 @@ function App() {
     return match ? match[0] : 'feed';
   }, [location.pathname]);
 
+  const selectedNewsletterId = useMemo(() => {
+    if (currentTabId !== 'feed') return null;
+    const base = TAB_ROUTES.feed;
+    if (!location.pathname.startsWith(`${base}/`)) return null;
+    const parts = location.pathname.split('/');
+    const last = parts[parts.length - 1];
+    return last || null;
+  }, [location.pathname, currentTabId]);
+
   const handleRoleChange = (event) => {
     const nextRole = event.target.value;
     console.info('[auth] role_changed', { from: role, to: nextRole });
@@ -278,6 +287,17 @@ function App() {
     );
   };
 
+  const handleOpenNewsletter = (newsletterId) => {
+    if (!newsletterId) return;
+    console.info('[feed] newsletter_opened', { id: newsletterId });
+    navigate(`${TAB_ROUTES.feed}/${newsletterId}`);
+  };
+
+  const handleBackToFeed = () => {
+    console.info('[feed] back_to_feed');
+    navigate(TAB_ROUTES.feed);
+  };
+
   const currentTab =
     visibleTabs.find((tab) => tab.id === currentTabId) || visibleTabs[0];
 
@@ -330,6 +350,9 @@ function App() {
             newsletters={newsletters}
             groups={groups}
             activeGroupId={activeGroupId}
+            selectedNewsletterId={selectedNewsletterId}
+            onOpenNewsletter={handleOpenNewsletter}
+            onBackToFeed={handleBackToFeed}
           />
         )}
         {currentTab.id === 'collect' && (
@@ -363,7 +386,14 @@ function App() {
   );
 }
 
-function FeedTab({ newsletters, groups, activeGroupId }) {
+function FeedTab({
+  newsletters,
+  groups,
+  activeGroupId,
+  selectedNewsletterId,
+  onOpenNewsletter,
+  onBackToFeed
+}) {
   const activeGroupName =
     activeGroupId === 'all'
       ? 'Toutes les équipes'
@@ -373,6 +403,9 @@ function FeedTab({ newsletters, groups, activeGroupId }) {
     activeGroupId === 'all'
       ? newsletters
       : newsletters.filter((nl) => nl.groupId === activeGroupId);
+  const selectedNewsletter =
+    selectedNewsletterId &&
+    visibleNewsletters.find((nl) => nl.id === selectedNewsletterId);
 
   return (
     <section className="panel-grid panel-grid--single">
@@ -382,10 +415,27 @@ function FeedTab({ newsletters, groups, activeGroupId }) {
           <p className="panel-subtitle">
             Dernières éditions prêtes à être partagées · {activeGroupName}.
           </p>
+          {selectedNewsletter && (
+            <button
+              type="button"
+              className="secondary-button feed-back-button"
+              onClick={onBackToFeed}
+            >
+              Retour au fil complet
+            </button>
+          )}
         </header>
         <div className="panel-body panel-body--list newsletter-list">
           {visibleNewsletters.map((nl) => (
-            <article key={nl.id} className="newsletter-article">
+            <article
+              key={nl.id}
+              className={
+                nl.id === selectedNewsletterId
+                  ? 'newsletter-article newsletter-article--active newsletter-article--clickable'
+                  : 'newsletter-article newsletter-article--clickable'
+              }
+              onClick={() => onOpenNewsletter && onOpenNewsletter(nl.id)}
+            >
               <header className="newsletter-article-header">
                 <div>
                   <h3>{nl.title}</h3>
