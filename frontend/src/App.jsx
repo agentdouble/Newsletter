@@ -316,6 +316,22 @@ function App() {
               <span className="logo-dot" />
               <span className="logo-text">Anjanews</span>
             </div>
+            <nav className="tab-nav">
+              {visibleTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={
+                    tab.id === currentTab.id
+                      ? 'tab-button tab-button--active'
+                      : 'tab-button'
+                  }
+                  onClick={() => navigate(TAB_ROUTES[tab.id])}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
           </div>
           <div className="header-controls">
             <div className="role-switch">
@@ -334,20 +350,6 @@ function App() {
             </div>
           </div>
         </div>
-        <nav className="tab-nav">
-          {visibleTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={
-                tab.id === currentTab.id ? 'tab-button tab-button--active' : 'tab-button'
-              }
-              onClick={() => navigate(TAB_ROUTES[tab.id])}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
       </header>
 
       <main className="app-main">
