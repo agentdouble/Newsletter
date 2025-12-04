@@ -9,7 +9,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 
 ## Fonctionnalités du MVP (frontend uniquement)
 
-- **Fil** : fil de newsletters écrites comme des articles (quelques exemples mockés + newsletters générées automatiquement), présenté dans un design noir & blanc minimaliste.
+- **Fil** : fil de newsletters écrites comme des articles (quelques exemples mockés + newsletters générées automatiquement), présenté dans un design noir & blanc minimaliste sans cadre autour des newsletters (titre, service et contenu uniquement).
 - **Collect** : formulaire pour que les utilisateurs envoient leurs success/fail stories.
 - **Générateur** : vue admin qui consomme les contributions et génère un texte complet de newsletter, immédiatement poussé dans le fil.
 - **Admin** : gestion simple en mémoire des utilisateurs, rôles (user, admin, super admin) et groupes/équipes.
