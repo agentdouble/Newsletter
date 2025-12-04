@@ -745,35 +745,7 @@ function GeneratorTab({
   };
 
   return (
-    <section className="panel-grid panel-grid--generator">
-      <article className="panel-card">
-        <header className="panel-header">
-          <h2>Contributions à intégrer</h2>
-        </header>
-        <div className="panel-body panel-body--list">
-          {hasContributions ? (
-            contributions.map((c) => (
-              <div key={c.id} className="contribution-pill">
-                <p className="contribution-team">
-                  {(c.author || '').trim() || 'Anonyme'} ·{' '}
-                  {c.newsletterLabel || targetLabel}
-                </p>
-                <p className="contribution-impact">
-                  {(c.text && c.text.length > 220
-                    ? `${c.text.slice(0, 220).trim()}…`
-                    : c.text) || ''}
-                </p>
-              </div>
-            ))
-          ) : (
-            <p className="empty-state">
-              Aucune contribution pour l’instant. Invitez vos équipes à
-              utiliser l’onglet <strong>Collect</strong>.
-            </p>
-          )}
-        </div>
-      </article>
-
+    <section className="panel-grid panel-grid--single">
       <article className="panel-card panel-card--accent">
         <header className="panel-header">
           <h2>Draft de newsletter</h2>
