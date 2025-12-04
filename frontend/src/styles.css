@@ -188,8 +188,8 @@ body {
 }
 
 .panel-grid--single {
-  grid-template-columns: minmax(0, 720px);
-  justify-content: center;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
 }
 
 @media (max-width: 900px) {
