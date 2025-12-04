@@ -30,6 +30,8 @@ const mockNewsletters = [
     date: '2026-02-14',
     audience: 'Produit & Growth',
     groupId: 'g-1',
+    imageUrl:
+      'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
     body:
       "Cette édition synthétise les principaux enseignements partagés par les équipes Produit au cours du dernier cycle. " +
       "L’objectif est de donner une vue claire des décisions structurantes, des résultats obtenus et des chantiers encore ouverts, " +
@@ -49,6 +51,8 @@ const mockNewsletters = [
     date: '2026-02-01',
     audience: 'Tech & Ops',
     groupId: 'g-2',
+    imageUrl:
+      'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
     body:
       "Cette édition est centrée sur l’analyse des incidents récents et sur les mesures prises pour renforcer la robustesse de la plateforme. " +
       "Elle vise à rendre visibles les arbitrages effectués, les points de vigilance identifiés et les engagements pris vis-à-vis des équipes consommatrices des services.\n\n" +
@@ -216,7 +220,7 @@ function App() {
     setNewsletterDraftHtml(draft);
   };
 
-  const handlePublishDraft = (html) => {
+  const handlePublishDraft = (html, imageUrl) => {
     const body = (html || '').trim();
     if (!body) return;
     const targetGroup =
@@ -229,12 +233,14 @@ function App() {
       date: new Date().toISOString(),
       audience: targetGroup ? targetGroup.name : 'Toute l’organisation',
       body,
-      groupId: activeGroupId === 'all' ? null : activeGroupId
+      groupId: activeGroupId === 'all' ? null : activeGroupId,
+      imageUrl: imageUrl || null
     };
 
     console.info('[generator] newsletter_published_to_feed', {
       id: article.id,
-      groupId: article.groupId
+      groupId: article.groupId,
+      hasImage: Boolean(article.imageUrl)
     });
     setNewsletters((prev) => [article, ...prev]);
   };
@@ -426,43 +432,72 @@ function FeedTab({
           )}
         </header>
         <div className="panel-body panel-body--list newsletter-list">
-          {visibleNewsletters.map((nl) => (
-            <article
-              key={nl.id}
-              className={
-                nl.id === selectedNewsletterId
-                  ? 'newsletter-article newsletter-article--active newsletter-article--clickable'
-                  : 'newsletter-article newsletter-article--clickable'
-              }
-              onClick={() => onOpenNewsletter && onOpenNewsletter(nl.id)}
-            >
-              <header className="newsletter-article-header">
-                <div>
-                  <h3>{nl.title}</h3>
-                  <p className="newsletter-chip-audience">{nl.audience}</p>
-                </div>
-                <div className="newsletter-meta-column">
-                  <span className="tag tag--soft">
-                    {new Date(nl.date).toLocaleDateString('fr-FR')}
-                  </span>
-                </div>
-              </header>
-              <div className="newsletter-body">
-                {nl.body && /<\/?[a-z][\s\S]*>/i.test(nl.body) ? (
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: nl.body
-                    }}
-                  />
-                ) : (
-                  nl.body
-                    .split('\n\n')
-                    .filter((block) => block.trim().length > 0)
-                    .map((block, index) => <p key={index}>{block}</p>)
+          {visibleNewsletters.map((nl) => {
+            const isActive = nl.id === selectedNewsletterId;
+            const hasHtml =
+              nl.body && /<\/?[a-z][\s\S]*>/i.test(nl.body || '');
+            const plainText = hasHtml
+              ? (nl.body || '').replace(/<[^>]+>/g, '')
+              : nl.body || '';
+            const snippet =
+              plainText.length > 260
+                ? `${plainText.slice(0, 260).trim()}…`
+                : plainText;
+
+            return (
+              <article
+                key={nl.id}
+                className={
+                  isActive
+                    ? 'newsletter-article newsletter-article--active newsletter-article--clickable'
+                    : 'newsletter-article newsletter-article--clickable'
+                }
+                onClick={() => onOpenNewsletter && onOpenNewsletter(nl.id)}
+              >
+                <header className="newsletter-article-header">
+                  <div>
+                    <h3>{nl.title}</h3>
+                    <p className="newsletter-chip-audience">{nl.audience}</p>
+                  </div>
+                  <div className="newsletter-meta-column">
+                    <span className="tag tag--soft">
+                      {new Date(nl.date).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                </header>
+
+                {nl.imageUrl && (
+                  <div className="newsletter-image-wrapper">
+                    <img
+                      src={nl.imageUrl}
+                      alt={nl.title}
+                      className="newsletter-image"
+                      loading="lazy"
+                    />
+                  </div>
                 )}
-              </div>
-            </article>
-          ))}
+
+                <div className="newsletter-body">
+                  {isActive ? (
+                    hasHtml ? (
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: nl.body
+                        }}
+                      />
+                    ) : (
+                      nl.body
+                        .split('\n\n')
+                        .filter((block) => block.trim().length > 0)
+                        .map((block, index) => <p key={index}>{block}</p>)
+                    )
+                  ) : (
+                    <p className="newsletter-snippet">{snippet}</p>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       </article>
     </section>
@@ -526,15 +561,23 @@ function CollectTab({ onCreate, targetLabel }) {
   );
 }
 
-function GeneratorTab({ contributions, targetLabel, draftHtml, onGenerate, onPublish }) {
+function GeneratorTab({
+  contributions,
+  targetLabel,
+  draftHtml,
+  onGenerate,
+  onPublish
+}) {
   const hasContributions = contributions.length > 0;
   const editorRef = useRef(null);
+  const [imageUrl, setImageUrl] = useState('');
 
   const handlePublishClick = () => {
     const node = editorRef.current;
     if (!node) return;
     const html = node.innerHTML || '';
-    onPublish(html);
+    onPublish(html, imageUrl || null);
+    setImageUrl('');
   };
 
   return (
@@ -595,6 +638,17 @@ function GeneratorTab({ contributions, targetLabel, draftHtml, onGenerate, onPub
             >
               Publier dans le fil
             </button>
+          </div>
+          <div className="form-grid form-grid--compact">
+            <label className="field field--full">
+              <span className="field-label">Image (URL optionnelle)</span>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(event) => setImageUrl(event.target.value)}
+                placeholder="https://…"
+              />
+            </label>
           </div>
           <div
             ref={editorRef}

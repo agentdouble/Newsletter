@@ -352,6 +352,17 @@ body {
   font-weight: 700;
 }
 
+.newsletter-image-wrapper {
+  margin-top: 8px;
+}
+
+.newsletter-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
 .newsletter-meta-column {
   display: flex;
   flex-direction: column;
@@ -364,6 +375,10 @@ body {
   font-size: 16px;
   line-height: 1.8;
   font-family: var(--font-serif);
+}
+
+.newsletter-snippet {
+  color: var(--text-soft);
 }
 
 .newsletter-body h1 {
