@@ -185,7 +185,7 @@ function App() {
         <div className="app-header-main">
           <div className="logo-pill">
             <span className="logo-dot" />
-            <span className="logo-text">Newsletter Studio</span>
+            <span className="logo-text">Anjanews</span>
           </div>
         </div>
         <div className="header-controls">

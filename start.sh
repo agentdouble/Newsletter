@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "[start] Launching Newsletter Studio frontend…"
+echo "[start] Launching Anjanews frontend…"
 
 if [ ! -d "${ROOT_DIR}/frontend" ]; then
   echo "[start] frontend directory not found. Nothing to start."
@@ -19,4 +19,3 @@ fi
 
 echo "[start] Starting Vite dev server (frontend only for now)…"
 npm run dev
-

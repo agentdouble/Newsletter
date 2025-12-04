@@ -1,4 +1,4 @@
-# Newsletter Studio MVP
+# Anjanews MVP
 
 Application MVP pour collecter des success stories / fail stories et générer des newsletters prêtes à être publiées.
 
