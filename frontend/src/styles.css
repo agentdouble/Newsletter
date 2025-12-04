@@ -716,6 +716,11 @@ body {
   background: #f0f0f0;
 }
 
+.group-delete-button {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
 .newsletter-highlights li::marker {
   color: var(--accent);
 }

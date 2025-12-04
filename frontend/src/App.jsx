@@ -266,6 +266,18 @@ function App() {
     setGroups((prev) => [...prev, entry]);
   };
 
+  const handleDeleteGroup = (groupId) => {
+    console.info('[admin] group_deleted', { groupId });
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    setUsers((prev) =>
+      prev.map((user) => {
+        const ids = user.groupIds || [];
+        if (!ids.includes(groupId)) return user;
+        return { ...user, groupIds: ids.filter((id) => id !== groupId) };
+      })
+    );
+  };
+
   const currentTab =
     visibleTabs.find((tab) => tab.id === currentTabId) || visibleTabs[0];
 
@@ -343,6 +355,7 @@ function App() {
             onAddGroup={handleAddGroup}
             onToggleGroupPermission={handleToggleGroupPermission}
             onUpdateUserGroups={handleUpdateUserGroups}
+            onDeleteGroup={handleDeleteGroup}
           />
         )}
       </main>
@@ -552,7 +565,8 @@ function AdminTab({
   onAddUser,
   onAddGroup,
   onToggleGroupPermission,
-  onUpdateUserGroups
+  onUpdateUserGroups,
+  onDeleteGroup
 }) {
   const [form, setForm] = useState({
     name: '',
@@ -745,6 +759,13 @@ function AdminTab({
                   />
                   <span className="toggle-label">Valider</span>
                 </label>
+                <button
+                  type="button"
+                  className="secondary-button group-delete-button"
+                  onClick={() => onDeleteGroup(group.id)}
+                >
+                  Supprimer
+                </button>
               </div>
             </div>
           ))}
