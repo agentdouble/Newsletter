@@ -20,7 +20,6 @@ const mockNewsletters = [
     id: 'nl-001',
     title: 'Newsletter Produit · Wins & leçons',
     date: '2026-02-14',
-    mood: 'optimiste',
     audience: 'Produit & Growth',
     body:
       "Cette édition synthétise les principaux enseignements partagés par les équipes Produit au cours du dernier cycle. " +
@@ -39,7 +38,6 @@ const mockNewsletters = [
     id: 'nl-002',
     title: 'Ops & Platform · Fails utiles',
     date: '2026-02-01',
-    mood: 'radical honesty',
     audience: 'Tech & Ops',
     body:
       "Cette édition est centrée sur l’analyse des incidents récents et sur les mesures prises pour renforcer la robustesse de la plateforme. " +
@@ -271,7 +269,6 @@ function FeedTab({ newsletters }) {
                   <span className="tag tag--soft">
                     {new Date(nl.date).toLocaleDateString('fr-FR')}
                   </span>
-                  {nl.mood && <span className="mood-pill">{nl.mood}</span>}
                 </div>
               </header>
               <div className="newsletter-body">

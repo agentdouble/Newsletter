@@ -311,16 +311,6 @@ body {
   line-height: 1.7;
 }
 
-.mood-pill {
-  align-self: flex-start;
-  margin-top: 2px;
-  font-size: 11px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(123, 108, 255, 0.12);
-  color: var(--accent-alt);
-}
-
 .tag {
   font-size: 11px;
   padding: 3px 10px;
