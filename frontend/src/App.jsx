@@ -380,6 +380,7 @@ function App() {
         )}
         {currentTab.id === 'admin' && (
           <AdminTab
+            newsletters={newsletters}
             users={users}
             groups={groups}
             onAddUser={handleAddUser}
@@ -675,6 +676,7 @@ function GeneratorTab({
 }
 
 function AdminTab({
+  newsletters,
   users,
   groups,
   onAddUser,
@@ -725,6 +727,118 @@ function AdminTab({
 
   return (
     <section className="panel-grid">
+      <article className="panel-card panel-card--full">
+        <header className="panel-header">
+          <h2>Newsletters & équipes</h2>
+          <p className="panel-subtitle">
+            Vue rapide des newsletters créées, des contributeurs rattachés et
+            des admins autorisés à publier.
+          </p>
+        </header>
+        <div className="panel-body panel-body--list">
+          {newsletters.length ? (
+            newsletters.map((nl) => {
+              const group = nl.groupId
+                ? groups.find((g) => g.id === nl.groupId)
+                : null;
+              const relatedUsers = nl.groupId
+                ? users.filter((user) =>
+                    (user.groupIds || []).includes(nl.groupId)
+                  )
+                : users;
+              const contributorsAllowed = nl.groupId
+                ? Boolean(group?.canContribute)
+                : true;
+              const contributorUsers = contributorsAllowed ? relatedUsers : [];
+              const adminPublishers = relatedUsers.filter(
+                (u) => u.role === 'admin' || u.role === 'superadmin'
+              );
+              return (
+                <div key={nl.id} className="admin-newsletter-row">
+                  <div className="admin-newsletter-header">
+                    <div>
+                      <p className="admin-newsletter-title">{nl.title}</p>
+                      <p className="admin-newsletter-meta">
+                        Audience : {group ? group.name : nl.audience || 'Tous'}
+                      </p>
+                    </div>
+                    <span className="tag tag--soft">
+                      {new Date(nl.date).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+
+                  <div className="admin-newsletter-line">
+                    <span className="admin-line-label">Contributeurs</span>
+                    <div className="admin-chip-row">
+                      {contributorsAllowed ? (
+                        contributorUsers.length ? (
+                          contributorUsers.map((user) => (
+                            <span key={user.id} className="tag tag--soft">
+                              {user.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="helper-text">
+                            Aucun contributeur rattaché
+                          </span>
+                        )
+                      ) : (
+                        <span className="helper-text">
+                          Collecte bloquée pour ce groupe
+                        </span>
+                      )}
+                      {group && (
+                        <span
+                          className={
+                            group.canContribute
+                              ? 'tag tag--success'
+                              : 'tag tag--fail'
+                          }
+                        >
+                          Collecte {group.canContribute ? 'ouverte' : 'fermée'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="admin-newsletter-line">
+                    <span className="admin-line-label">Admins</span>
+                    <div className="admin-chip-row">
+                      {adminPublishers.length ? (
+                        adminPublishers.map((user) => (
+                          <span key={user.id} className="tag tag--soft">
+                            {user.name} · {ROLE_LABELS[user.role]}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="helper-text">
+                          Aucun admin rattaché
+                        </span>
+                      )}
+                      {group && (
+                        <span
+                          className={
+                            group.canApprove
+                              ? 'tag tag--success'
+                              : 'tag tag--fail'
+                          }
+                        >
+                          Publication {group.canApprove ? 'autorisée' : 'bloquée'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p className="empty-state">
+              Aucune newsletter publiée pour l’instant.
+            </p>
+          )}
+        </div>
+      </article>
+
       <article className="panel-card">
         <header className="panel-header">
           <h2>Utilisateurs & rôles</h2>
