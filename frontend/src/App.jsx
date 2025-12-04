@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Chart, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Chart, ArcElement, DoughnutController, Tooltip, Legend } from 'chart.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-Chart.register(ArcElement, Tooltip, Legend);
+Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
 const ROLES = ['user', 'admin', 'superadmin'];
 
@@ -627,15 +627,16 @@ function ContributionTab({ contributions, users, targetLabel }) {
     const node = chartRef.current;
     if (!node) return undefined;
 
-    const data = [contributorCount, remaining];
-
     if (chartInstanceRef.current) {
-      chartInstanceRef.current.data.datasets[0].data = data;
-      chartInstanceRef.current.update();
-      return undefined;
+      chartInstanceRef.current.destroy();
+      chartInstanceRef.current = null;
     }
 
-    chartInstanceRef.current = new Chart(node, {
+    const data = [contributorCount, remaining];
+    const ctx = node.getContext('2d');
+    if (!ctx) return undefined;
+
+    chartInstanceRef.current = new Chart(ctx, {
       type: 'doughnut',
       data: {
         labels: ['Contributeurs', 'Autres membres'],
