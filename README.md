@@ -9,11 +9,11 @@ Application MVP pour collecter des success stories / fail stories et générer d
 
 ## Fonctionnalités du MVP (frontend uniquement)
 
-- **Fil** : fil de newsletters écrites comme des articles (quelques exemples mockés + newsletters générées automatiquement), présenté dans un design noir & blanc minimaliste sans cadre autour des newsletters (titre, service et contenu uniquement). Les newsletters générées sont structurées en sections (titre principal, intro, liste de faits marquants, conclusion) pour se rapprocher d’un article Markdown.
-- **Collect** : formulaire pour que les utilisateurs envoient leurs success/fail stories.
-- **Générateur** : vue admin qui consomme les contributions et génère un texte complet de newsletter, immédiatement poussé dans le fil.
-- **Admin** : gestion simple en mémoire des utilisateurs, rôles (user, admin, super admin) et groupes/équipes, avec création/suppression de groupes et attribution d’un ou plusieurs groupes existants aux utilisateurs.
-- Sélecteur de rôle en haut de l’interface pour simuler les permissions.
+- **Fil** : fil de newsletters écrites comme des articles (quelques exemples mockés + newsletters générées automatiquement), présenté dans un design noir & blanc minimaliste, sans cartes ni ombrages (titre, service et contenu uniquement). Les newsletters générées sont structurées en sections (titre principal, intro, liste de faits marquants, conclusion) pour se rapprocher d’un article Markdown.
+- **Collect** : formulaire minimaliste noir & blanc pour que les utilisateurs envoient leurs success/fail stories.
+- **Générateur** : vue admin qui consomme les contributions et génère un texte complet de newsletter, immédiatement poussé dans le fil, avec une surface d’édition simple en noir et blanc.
+- **Admin** : gestion simple en mémoire des utilisateurs, rôles (user, admin, super admin) et groupes/équipes, avec création/suppression de groupes et attribution d’un ou plusieurs groupes existants aux utilisateurs dans une liste monochrome épurée.
+- Sélecteur de rôle en haut de l’interface pour simuler les permissions, présenté comme une simple barre de navigation noir & blanc.
 
 > Remarque : aucune donnée n’est encore persistée ni connectée à un backend.
 
@@ -44,5 +44,5 @@ Pour rester aligné avec la structure cible (backend + frontend), utilisez toujo
 
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
-- Header compact et sticky (toujours visible) avec navigation par onglets synchronisée avec les routes (`/newsletter/fil`, `/newsletter/collect`, `/newsletter/generateur`, `/newsletter/admin`).
+- Header compact, aligné sur une grille noir & blanc, sticky (toujours visible) avec navigation par onglets synchronisée avec les routes (`/newsletter/fil`, `/newsletter/collect`, `/newsletter/generateur`, `/newsletter/admin`).
 - Les logs (`console.info`) sont ajoutés uniquement sur les actions clés (changement de rôle, création de contribution, génération d’une newsletter).
