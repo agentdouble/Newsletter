@@ -591,7 +591,7 @@ function CollectTab({ onCreate, targetLabel }) {
           <span className="field-label">Nouveautés du mois</span>
           <textarea
             className="notepad-textarea"
-            rows={6}
+            rows={4}
             value={text}
             onChange={(event) => setText(event.target.value)}
             placeholder="Résumez les faits marquants côté assurance : lancement d’un parcours indemnisation, nouvelle offre auto/habitation, amélioration service clients, etc."
@@ -602,7 +602,7 @@ function CollectTab({ onCreate, targetLabel }) {
           <span className="field-label">Success story</span>
           <textarea
             className="notepad-textarea"
-            rows={4}
+            rows={3}
             value={successStory}
             onChange={(event) => setSuccessStory(event.target.value)}
             placeholder="Exemple : réduction du délai de prise en charge sinistre, hausse du NPS après refonte espace assuré, automatisation d’une étape de souscription."
@@ -613,7 +613,7 @@ function CollectTab({ onCreate, targetLabel }) {
           <span className="field-label">Fail story</span>
           <textarea
             className="notepad-textarea"
-            rows={4}
+            rows={3}
             value={failStory}
             onChange={(event) => setFailStory(event.target.value)}
             placeholder="Exemple : incident sur la déclaration de sinistre en ligne, campagne emailing mal ciblée, expérimentation de tarification non concluante."
