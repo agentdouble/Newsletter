@@ -628,10 +628,6 @@ function CollectTab({ onCreate, targetLabel }) {
           >
             Envoyer les nouveautés
           </button>
-          <p className="helper-text">
-            Les contributions sont visibles par l’équipe communication / admin
-            avant diffusion.
-          </p>
         </div>
       </form>
     </section>
