@@ -271,8 +271,14 @@ function App() {
 function FeedTab({ newsletters }) {
   return (
     <section className="panel-grid panel-grid--single">
-      <article className="panel-card">
-        <div className="panel-body panel-body--list">
+      <article className="panel-card panel-card--feed">
+        <header className="panel-header panel-header--feed">
+          <h2>Fil des newsletters internes</h2>
+          <p className="panel-subtitle">
+            Dernières éditions prêtes à être partagées à toute l’organisation.
+          </p>
+        </header>
+        <div className="panel-body panel-body--list newsletter-list">
           {newsletters.map((nl) => (
             <article key={nl.id} className="newsletter-article">
               <header className="newsletter-article-header">
