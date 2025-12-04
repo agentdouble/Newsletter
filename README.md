@@ -6,6 +6,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 
 - Backend : Python (à réintroduire plus tard, non présent dans ce MVP)
 - Frontend : React + Vite (`frontend/`), `react-router-dom` pour les routes frontend.
+  - Thème visuel : noir & blanc inspiré de Medium, avec la police de lecture `charter` chargée depuis `glyph.medium.com` (fallback serif système si la ressource n’est pas disponible).
 
 ## Fonctionnalités du MVP (frontend uniquement)
 
