@@ -316,6 +316,8 @@ function App() {
               <span className="logo-dot" />
               <span className="logo-text">Anjanews</span>
             </div>
+          </div>
+          <div className="header-controls">
             <nav className="tab-nav">
               {visibleTabs.map((tab) => (
                 <button
@@ -332,8 +334,6 @@ function App() {
                 </button>
               ))}
             </nav>
-          </div>
-          <div className="header-controls">
             <div className="role-switch">
               <span className="role-label">Rôle</span>
               <select

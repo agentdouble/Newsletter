@@ -45,5 +45,5 @@ Pour rester aligné avec la structure cible (backend + frontend), utilisez toujo
 
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
-- Header compact, aligné sur une grille noir & blanc, sticky (toujours visible) avec navigation par onglets synchronisée avec les routes (`/newsletter/fil`, `/newsletter/collect`, `/newsletter/generateur`, `/newsletter/admin`), intégrée dans la même barre que le logo « Anjanews » avec un espacement suffisant pour garder une bonne lisibilité.
+- Header compact, aligné sur une grille noir & blanc, sticky (toujours visible) avec navigation par onglets synchronisée avec les routes (`/newsletter/fil`, `/newsletter/collect`, `/newsletter/generateur`, `/newsletter/admin`), intégrée dans la même barre que le logo « Anjanews » et alignée à droite avec un espacement suffisant pour garder une bonne lisibilité.
 - Les logs (`console.info`) sont ajoutés uniquement sur les actions clés (changement de rôle, création de contribution, génération et publication d’une newsletter, ouverture d’une newsletter depuis le fil).
