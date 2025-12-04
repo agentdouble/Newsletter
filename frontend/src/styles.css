@@ -235,6 +235,10 @@ body {
   width: 100%;
 }
 
+.admin-newsletter-form {
+  margin-top: 6px;
+}
+
 .panel-card--feed {
   background: transparent;
   border-color: var(--border-subtle);

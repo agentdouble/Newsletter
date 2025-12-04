@@ -69,9 +69,27 @@ const mockNewsletters = [
 ];
 
 const initialGroups = [
-  { id: 'g-1', name: 'Produit', canContribute: true, canApprove: false },
-  { id: 'g-2', name: 'Tech', canContribute: true, canApprove: true },
-  { id: 'g-3', name: 'Communication', canContribute: false, canApprove: true }
+  {
+    id: 'g-1',
+    name: 'Produit',
+    canContribute: true,
+    canApprove: false,
+    adminIds: []
+  },
+  {
+    id: 'g-2',
+    name: 'Tech',
+    canContribute: true,
+    canApprove: true,
+    adminIds: []
+  },
+  {
+    id: 'g-3',
+    name: 'Communication',
+    canContribute: false,
+    canApprove: true,
+    adminIds: []
+  }
 ];
 
 const initialUsers = [
@@ -245,6 +263,29 @@ function App() {
     setNewsletters((prev) => [article, ...prev]);
   };
 
+  const handleCreateNewsletter = ({ title, groupId }) => {
+    const trimmedTitle = (title || '').trim();
+    if (!trimmedTitle) return;
+    const targetGroup =
+      groupId && groupId !== 'all'
+        ? groups.find((g) => g.id === groupId)
+        : null;
+    const entry = {
+      id: `nl-${Date.now()}`,
+      title: trimmedTitle,
+      date: new Date().toISOString(),
+      audience: targetGroup ? targetGroup.name : 'Toute l’organisation',
+      body: 'Brouillon à compléter.',
+      groupId: targetGroup ? targetGroup.id : null,
+      imageUrl: null
+    };
+    console.info('[admin] newsletter_created', {
+      id: entry.id,
+      groupId: entry.groupId
+    });
+    setNewsletters((prev) => [entry, ...prev]);
+  };
+
   const handleAddUser = (user) => {
     const entry = { id: `u-${Date.now()}`, ...user };
     console.info('[admin] user_added', entry);
@@ -268,6 +309,21 @@ function App() {
     );
   };
 
+  const handleUpdateGroupAdmins = (groupId, adminIds) => {
+    console.info('[admin] group_admins_updated', { groupId, adminIds });
+    setGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, adminIds } : g))
+    );
+    setUsers((prev) =>
+      prev.map((user) => {
+        if (!adminIds.includes(user.id)) return user;
+        const ids = user.groupIds || [];
+        if (ids.includes(groupId)) return user;
+        return { ...user, groupIds: [...ids, groupId] };
+      })
+    );
+  };
+
   const handleAddGroup = (name) => {
     const trimmed = (name || '').trim();
     if (!trimmed) return;
@@ -275,7 +331,8 @@ function App() {
       id: `g-${Date.now()}`,
       name: trimmed,
       canContribute: true,
-      canApprove: false
+      canApprove: false,
+      adminIds: []
     };
     console.info('[admin] group_added', entry);
     setGroups((prev) => [...prev, entry]);
@@ -383,11 +440,14 @@ function App() {
             newsletters={newsletters}
             users={users}
             groups={groups}
+            defaultNewsletterTitle={currentNewsletterLabel}
             onAddUser={handleAddUser}
             onAddGroup={handleAddGroup}
             onToggleGroupPermission={handleToggleGroupPermission}
+            onUpdateGroupAdmins={handleUpdateGroupAdmins}
             onUpdateUserGroups={handleUpdateUserGroups}
             onDeleteGroup={handleDeleteGroup}
+            onCreateNewsletter={handleCreateNewsletter}
           />
         )}
       </main>
@@ -679,11 +739,14 @@ function AdminTab({
   newsletters,
   users,
   groups,
+  defaultNewsletterTitle,
   onAddUser,
   onAddGroup,
   onToggleGroupPermission,
+  onUpdateGroupAdmins,
   onUpdateUserGroups,
-  onDeleteGroup
+  onDeleteGroup,
+  onCreateNewsletter
 }) {
   const [form, setForm] = useState({
     name: '',
@@ -691,6 +754,14 @@ function AdminTab({
     groupIds: []
   });
   const [newGroupName, setNewGroupName] = useState('');
+  const [newNewsletter, setNewNewsletter] = useState({
+    title: defaultNewsletterTitle,
+    groupId: 'all'
+  });
+
+  useEffect(() => {
+    setNewNewsletter((prev) => ({ ...prev, title: defaultNewsletterTitle }));
+  }, [defaultNewsletterTitle]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -725,6 +796,13 @@ function AdminTab({
     setNewGroupName('');
   };
 
+  const handleNewsletterSubmit = (event) => {
+    event.preventDefault();
+    if (!newNewsletter.title.trim()) return;
+    onCreateNewsletter(newNewsletter);
+    setNewNewsletter((prev) => ({ ...prev, title: defaultNewsletterTitle }));
+  };
+
   return (
     <section className="panel-grid">
       <article className="panel-card panel-card--full">
@@ -735,6 +813,53 @@ function AdminTab({
             des admins autorisés à publier.
           </p>
         </header>
+        <form
+          className="form-grid form-grid--compact admin-newsletter-form"
+          onSubmit={handleNewsletterSubmit}
+        >
+          <label className="field">
+            <span className="field-label">Titre</span>
+            <input
+              type="text"
+              value={newNewsletter.title}
+              onChange={(event) =>
+                setNewNewsletter((prev) => ({
+                  ...prev,
+                  title: event.target.value
+                }))
+              }
+              placeholder="Newsletter mensuelle…"
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Service ciblé</span>
+            <select
+              value={newNewsletter.groupId}
+              onChange={(event) =>
+                setNewNewsletter((prev) => ({
+                  ...prev,
+                  groupId: event.target.value
+                }))
+              }
+            >
+              <option value="all">Toutes les équipes</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="form-actions form-actions--right">
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={!newNewsletter.title.trim()}
+            >
+              Créer la newsletter
+            </button>
+          </div>
+        </form>
         <div className="panel-body panel-body--list">
           {newsletters.length ? (
             newsletters.map((nl) => {
@@ -750,9 +875,14 @@ function AdminTab({
                 ? Boolean(group?.canContribute)
                 : true;
               const contributorUsers = contributorsAllowed ? relatedUsers : [];
-              const adminPublishers = relatedUsers.filter(
-                (u) => u.role === 'admin' || u.role === 'superadmin'
-              );
+              const adminUsersFromGroup = (group?.adminIds || [])
+                .map((id) => users.find((u) => u.id === id))
+                .filter(Boolean);
+              const adminPublishers = adminUsersFromGroup.length
+                ? adminUsersFromGroup
+                : relatedUsers.filter(
+                    (u) => u.role === 'admin' || u.role === 'superadmin'
+                  );
               return (
                 <div key={nl.id} className="admin-newsletter-row">
                   <div className="admin-newsletter-header">
@@ -954,7 +1084,7 @@ function AdminTab({
         <header className="panel-header">
           <h2>Groupes & droits</h2>
           <p className="panel-subtitle">
-            Préfiguration simple des permissions par équipe.
+            Préfiguration simple des permissions et des admins par équipe.
           </p>
         </header>
         <div className="panel-body panel-body--list">
@@ -995,6 +1125,44 @@ function AdminTab({
                 >
                   Supprimer
                 </button>
+                <details className="user-groups-dropdown">
+                  <summary>Admins du groupe</summary>
+                  <div className="user-groups-list">
+                    {(() => {
+                      const adminCandidates = users.filter(
+                        (u) => u.role === 'admin' || u.role === 'superadmin'
+                      );
+                      const adminIds = group.adminIds || [];
+                      if (!adminCandidates.length) {
+                        return (
+                          <span className="helper-text">
+                            Aucun admin disponible
+                          </span>
+                        );
+                      }
+                      return adminCandidates.map((user) => {
+                        const checked = adminIds.includes(user.id);
+                        return (
+                          <label key={user.id} className="toggle">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const next = checked
+                                  ? adminIds.filter((id) => id !== user.id)
+                                  : [...adminIds, user.id];
+                                onUpdateGroupAdmins(group.id, next);
+                              }}
+                            />
+                            <span className="toggle-label">
+                              {user.name} · {ROLE_LABELS[user.role]}
+                            </span>
+                          </label>
+                        );
+                      });
+                    })()}
+                  </div>
+                </details>
               </div>
             </div>
           ))}
