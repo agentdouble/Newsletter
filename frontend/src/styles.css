@@ -473,6 +473,10 @@ body {
   opacity: 0.9;
 }
 
+.reaction-button--down .reaction-icon {
+  transform: rotate(180deg);
+}
+
 .reaction-count {
   font-weight: 600;
   font-size: 12px;
@@ -481,6 +485,14 @@ body {
 .reaction-icon {
   filter: grayscale(1);
   color: #000000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reaction-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .comment-count {
