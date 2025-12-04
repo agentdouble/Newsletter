@@ -444,6 +444,18 @@ function FeedTab({
                 ? `${plainText.slice(0, 260).trim()}…`
                 : plainText;
 
+            const imageNode =
+              nl.imageUrl && (
+                <div className="newsletter-image-wrapper">
+                  <img
+                    src={nl.imageUrl}
+                    alt={nl.title}
+                    className="newsletter-image"
+                    loading="lazy"
+                  />
+                </div>
+              );
+
             return (
               <article
                 key={nl.id}
@@ -458,6 +470,7 @@ function FeedTab({
                     : () => onOpenNewsletter(nl.id)
                 }
               >
+                {isActive && imageNode}
                 <div className="newsletter-main">
                   <header className="newsletter-article-header">
                     <div>
@@ -490,16 +503,7 @@ function FeedTab({
                   </div>
                 </div>
 
-                {nl.imageUrl && (
-                  <div className="newsletter-image-wrapper">
-                    <img
-                      src={nl.imageUrl}
-                      alt={nl.title}
-                      className="newsletter-image"
-                      loading="lazy"
-                    />
-                  </div>
-                )}
+                {!isActive && imageNode}
               </article>
             );
           })}
