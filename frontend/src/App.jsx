@@ -721,9 +721,7 @@ function FeedTab({
                   <div className="comment-stack">
                     <div className="comment-head">
                       <h4>Commentaires</h4>
-                      <span className="comment-count">
-                        {comments.length} en fil
-                      </span>
+                      <span className="comment-count">{comments.length}</span>
                     </div>
                     {comments.length ? (
                       <div className="comment-list">
