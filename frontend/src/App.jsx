@@ -632,24 +632,6 @@ function GeneratorTab({
           </p>
         </header>
         <div className="panel-body">
-          <div className="generator-actions">
-            <button
-              type="button"
-              className="primary-button"
-              onClick={onGenerate}
-              disabled={!hasContributions}
-            >
-              Générer un draft
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={handlePublishClick}
-              disabled={!draftHtml}
-            >
-              Publier dans le fil
-            </button>
-          </div>
           <div className="form-grid form-grid--compact">
             <label className="field field--full">
               <span className="field-label">Image (URL optionnelle)</span>
@@ -668,6 +650,24 @@ function GeneratorTab({
             suppressContentEditableWarning
             dangerouslySetInnerHTML={{ __html: draftHtml || '' }}
           />
+          <div className="generator-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={onGenerate}
+              disabled={!hasContributions}
+            >
+              Générer un draft
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handlePublishClick}
+              disabled={!draftHtml}
+            >
+              Publier dans le fil
+            </button>
+          </div>
         </div>
       </article>
     </section>
