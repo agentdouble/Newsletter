@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Chart, ArcElement, DoughnutController, Tooltip, Legend } from 'chart.js';
 import { useLocation, useNavigate } from 'react-router-dom';
+
+Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
 const ROLES = ['user', 'admin', 'superadmin'];
 
@@ -16,6 +19,7 @@ const REACTION_BASELINE = {
 const TABS = [
   { id: 'feed', label: 'Fil', roles: ROLES },
   { id: 'collect', label: 'Collect', roles: ROLES },
+  { id: 'contributions', label: 'Contributions', roles: ROLES },
   { id: 'generator', label: 'Générateur', roles: ['admin', 'superadmin'] },
   { id: 'admin', label: 'Admin', roles: ['superadmin'] }
 ];
@@ -23,6 +27,7 @@ const TABS = [
 const TAB_ROUTES = {
   feed: '/newsletter/fil',
   collect: '/newsletter/collect',
+  contributions: '/newsletter/contribution',
   generator: '/newsletter/generateur',
   admin: '/newsletter/admin'
 };
@@ -79,15 +84,33 @@ const mockNewsletters = [
 ];
 
 const initialGroups = [
-  { id: 'g-1', name: 'Produit', canContribute: true, canApprove: false },
-  { id: 'g-2', name: 'Tech', canContribute: true, canApprove: true },
-  { id: 'g-3', name: 'Communication', canContribute: false, canApprove: true }
+  {
+    id: 'g-1',
+    name: 'Produit',
+    canContribute: true,
+    canApprove: false,
+    adminIds: []
+  },
+  {
+    id: 'g-2',
+    name: 'Tech',
+    canContribute: true,
+    canApprove: true,
+    adminIds: []
+  },
+  {
+    id: 'g-3',
+    name: 'Communication',
+    canContribute: false,
+    canApprove: true,
+    adminIds: []
+  }
 ];
 
 const initialUsers = [
-  { id: 'u-1', name: 'Lina', role: 'user', groupIds: ['g-1'] },
-  { id: 'u-2', name: 'Noah', role: 'admin', groupIds: ['g-3'] },
-  { id: 'u-3', name: 'Sacha', role: 'superadmin', groupIds: ['g-1', 'g-2'] }
+  { id: 'u-1', name: 'GJV', role: 'user', groupIds: ['g-1'] },
+  { id: 'u-2', name: 'XPD', role: 'admin', groupIds: ['g-3'] },
+  { id: 'u-3', name: 'QLR', role: 'superadmin', groupIds: ['g-1', 'g-2'] }
 ];
 
 function withEngagement(newsletter) {
@@ -106,6 +129,11 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function toTrigram(value) {
+  const cleaned = (value || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3);
+  return cleaned.toUpperCase();
 }
 
 function makeSnippet(value, limit = 220) {
@@ -359,10 +387,41 @@ function App() {
     );
   };
 
+  const handleCreateNewsletter = ({ title, groupId }) => {
+    const trimmedTitle = (title || '').trim();
+    if (!trimmedTitle) return;
+    const targetGroup =
+      groupId && groupId !== 'all'
+        ? groups.find((g) => g.id === groupId)
+        : null;
+    const entry = {
+      id: `nl-${Date.now()}`,
+      title: trimmedTitle,
+      date: new Date().toISOString(),
+      audience: targetGroup ? targetGroup.name : 'Toute l’organisation',
+      body: 'Brouillon à compléter.',
+      groupId: targetGroup ? targetGroup.id : null,
+      imageUrl: null,
+      reactions: { ...REACTION_BASELINE },
+      comments: []
+    };
+    console.info('[admin] newsletter_created', {
+      id: entry.id,
+      groupId: entry.groupId
+    });
+    setNewsletters((prev) => [entry, ...prev]);
+  };
+
   const handleAddUser = (user) => {
-    const entry = { id: `u-${Date.now()}`, ...user };
+    const trigram = toTrigram(user.name);
+    if (!trigram) return;
+    const entry = { id: `u-${Date.now()}`, ...user, name: trigram };
     console.info('[admin] user_added', entry);
     setUsers((prev) => [...prev, entry]);
+  };
+
+  const handleResetUserPassword = (userId) => {
+    console.info('[admin] user_password_reset', { userId });
   };
 
   const handleUpdateUserGroups = (userId, groupIds) => {
@@ -374,11 +433,18 @@ function App() {
     );
   };
 
-  const handleToggleGroupPermission = (groupId, key) => {
+  const handleUpdateGroupAdmins = (groupId, adminIds) => {
+    console.info('[admin] group_admins_updated', { groupId, adminIds });
     setGroups((prev) =>
-      prev.map((g) =>
-        g.id === groupId ? { ...g, [key]: !g[key] } : g
-      )
+      prev.map((g) => (g.id === groupId ? { ...g, adminIds } : g))
+    );
+    setUsers((prev) =>
+      prev.map((user) => {
+        if (!adminIds.includes(user.id)) return user;
+        const ids = user.groupIds || [];
+        if (ids.includes(groupId)) return user;
+        return { ...user, groupIds: [...ids, groupId] };
+      })
     );
   };
 
@@ -389,7 +455,8 @@ function App() {
       id: `g-${Date.now()}`,
       name: trimmed,
       canContribute: true,
-      canApprove: false
+      canApprove: false,
+      adminIds: []
     };
     console.info('[admin] group_added', entry);
     setGroups((prev) => [...prev, entry]);
@@ -486,6 +553,13 @@ function App() {
             onCreate={handleCreateContribution}
           />
         )}
+        {currentTab.id === 'contributions' && (
+          <ContributionTab
+            contributions={contributions}
+            users={users}
+            targetLabel={currentNewsletterLabel}
+          />
+        )}
         {currentTab.id === 'generator' && (
           <GeneratorTab
             contributions={visibleGeneratorContributions}
@@ -497,13 +571,17 @@ function App() {
         )}
         {currentTab.id === 'admin' && (
           <AdminTab
+            newsletters={newsletters}
             users={users}
             groups={groups}
+            defaultNewsletterTitle={currentNewsletterLabel}
             onAddUser={handleAddUser}
+            onResetUserPassword={handleResetUserPassword}
             onAddGroup={handleAddGroup}
-            onToggleGroupPermission={handleToggleGroupPermission}
+            onUpdateGroupAdmins={handleUpdateGroupAdmins}
             onUpdateUserGroups={handleUpdateUserGroups}
             onDeleteGroup={handleDeleteGroup}
+            onCreateNewsletter={handleCreateNewsletter}
           />
         )}
       </main>
@@ -798,6 +876,7 @@ function CollectTab({ onCreate, targetLabel }) {
   const [text, setText] = useState('');
   const [successStory, setSuccessStory] = useState('');
   const [failStory, setFailStory] = useState('');
+  const [authorName, setAuthorName] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -805,15 +884,18 @@ function CollectTab({ onCreate, targetLabel }) {
     const success = successStory.trim();
     const fail = failStory.trim();
     if (!main && !success && !fail) return;
+    const author = authorName.trim() || 'Anonyme';
     onCreate({
       newsletterLabel: targetLabel,
       text: main,
       successStory: success,
-      failStory: fail
+      failStory: fail,
+      author
     });
     setText('');
     setSuccessStory('');
     setFailStory('');
+    setAuthorName('');
   };
 
   const isSubmitDisabled =
@@ -829,6 +911,16 @@ function CollectTab({ onCreate, targetLabel }) {
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span className="field-label">Nom du contributeur</span>
+          <input
+            type="text"
+            value={authorName}
+            onChange={(event) => setAuthorName(event.target.value)}
+            placeholder="Nom ou équipe"
+          />
+        </label>
+
         <label className="field field--full">
           <span className="field-label">Newsletter ciblée</span>
           <div className="tag tag--soft">{targetLabel}</div>
@@ -877,6 +969,160 @@ function CollectTab({ onCreate, targetLabel }) {
           </button>
         </div>
       </form>
+    </section>
+  );
+}
+
+function ContributionTab({ contributions, users, targetLabel }) {
+  const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+
+  const scopedContributions = useMemo(
+    () =>
+      contributions.filter(
+        (c) => (c.newsletterLabel || '') === (targetLabel || '')
+      ),
+    [contributions, targetLabel]
+  );
+
+  const uniqueContributors = useMemo(() => {
+    const names = scopedContributions
+      .map((c) => (c.author || 'Anonyme').trim().toLowerCase())
+      .filter(Boolean);
+    return Array.from(new Set(names));
+  }, [scopedContributions]);
+
+  const contributorCount = uniqueContributors.length;
+  const totalUsers = users.length;
+  const participationRate = totalUsers
+    ? Math.round((contributorCount / totalUsers) * 100)
+    : 0;
+  const remaining = Math.max(totalUsers - contributorCount, 0);
+
+  useEffect(() => {
+    const node = chartRef.current;
+    if (!node) return undefined;
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+      chartInstanceRef.current = null;
+    }
+
+    const data = [contributorCount, remaining];
+    const ctx = node.getContext('2d');
+    if (!ctx) return undefined;
+
+    chartInstanceRef.current = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Contributeurs', 'Autres membres'],
+        datasets: [
+          {
+            data,
+            backgroundColor: ['#000000', '#e0e0e0'],
+            borderWidth: 0
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        cutout: '70%',
+        animation: false
+      }
+    });
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, [contributorCount, remaining]);
+
+  useEffect(() => {
+    console.info('[contributions] tab_opened', {
+      contributors: contributorCount,
+      totalUsers,
+      participationRate
+    });
+  }, [contributorCount, participationRate, totalUsers]);
+
+  return (
+    <section className="panel-grid panel-grid--single">
+      <article className="panel-card">
+        <header className="panel-header">
+          <h2>Contributions en cours</h2>
+          <p className="panel-subtitle">
+            Vue d’ensemble des contributions pour {targetLabel} et taux de
+            participation.
+          </p>
+        </header>
+
+        <div className="contribution-stats">
+          <div className="chart-box">
+            <canvas ref={chartRef} width="140" height="140" />
+          </div>
+          <div className="stats-metrics">
+            <p className="stats-metric">{participationRate}%</p>
+            <p className="stats-helper">taux de participation unique</p>
+            <p className="stats-detail">
+              {contributorCount} contributeur(s) / {totalUsers} membre(s)
+            </p>
+          </div>
+        </div>
+
+        <div className="panel-body panel-body--list">
+          {scopedContributions.length ? (
+            scopedContributions.map((c) => {
+              const mainSnippet = makeSnippet(c.text, 240);
+              const successSnippet = makeSnippet(c.successStory, 200);
+              const failSnippet = makeSnippet(c.failStory, 200);
+              const hasContent =
+                Boolean(mainSnippet) ||
+                Boolean(successSnippet) ||
+                Boolean(failSnippet);
+
+              return (
+                <div key={c.id} className="contribution-pill">
+                  <p className="contribution-team">
+                    {(c.author || '').trim() || 'Anonyme'} ·{' '}
+                    {c.newsletterLabel || targetLabel || 'Newsletter'}
+                  </p>
+                  {hasContent ? (
+                    <>
+                      {mainSnippet && (
+                        <p className="contribution-impact">{mainSnippet}</p>
+                      )}
+                      {successSnippet && (
+                        <p className="contribution-impact">
+                          <strong>Success&nbsp;:</strong> {successSnippet}
+                        </p>
+                      )}
+                      {failSnippet && (
+                        <p className="contribution-impact">
+                          <strong>Fail&nbsp;:</strong> {failSnippet}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="contribution-impact">
+                      Aucune note détaillée fournie.
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <p className="empty-state">
+              Aucune contribution enregistrée pour cette édition.
+            </p>
+          )}
+        </div>
+      </article>
     </section>
   );
 }
@@ -960,24 +1206,6 @@ function GeneratorTab({
           </p>
         </header>
         <div className="panel-body">
-          <div className="generator-actions">
-            <button
-              type="button"
-              className="primary-button"
-              onClick={onGenerate}
-              disabled={!hasContributions}
-            >
-              Générer un draft
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={handlePublishClick}
-              disabled={!draftHtml}
-            >
-              Publier dans le fil
-            </button>
-          </div>
           <div className="form-grid form-grid--compact">
             <label className="field field--full">
               <span className="field-label">Image (URL optionnelle)</span>
@@ -996,6 +1224,24 @@ function GeneratorTab({
             suppressContentEditableWarning
             dangerouslySetInnerHTML={{ __html: draftHtml || '' }}
           />
+          <div className="generator-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={onGenerate}
+              disabled={!hasContributions}
+            >
+              Générer un draft
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handlePublishClick}
+              disabled={!draftHtml}
+            >
+              Publier dans le fil
+            </button>
+          </div>
         </div>
       </article>
     </section>
@@ -1003,13 +1249,17 @@ function GeneratorTab({
 }
 
 function AdminTab({
+  newsletters,
   users,
   groups,
+  defaultNewsletterTitle,
   onAddUser,
+  onResetUserPassword,
   onAddGroup,
-  onToggleGroupPermission,
+  onUpdateGroupAdmins,
   onUpdateUserGroups,
-  onDeleteGroup
+  onDeleteGroup,
+  onCreateNewsletter
 }) {
   const [form, setForm] = useState({
     name: '',
@@ -1017,10 +1267,25 @@ function AdminTab({
     groupIds: []
   });
   const [newGroupName, setNewGroupName] = useState('');
+  const [newNewsletter, setNewNewsletter] = useState({
+    title: defaultNewsletterTitle,
+    groupId: 'all'
+  });
+  const adminTabs = [
+    { id: 'newsletters', label: 'Newsletters & équipes' },
+    { id: 'users', label: 'Utilisateurs & rôles' },
+    { id: 'groups', label: 'Groupes & droits' }
+  ];
+  const [activeAdminTab, setActiveAdminTab] = useState(adminTabs[0].id);
+
+  useEffect(() => {
+    setNewNewsletter((prev) => ({ ...prev, title: defaultNewsletterTitle }));
+  }, [defaultNewsletterTitle]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'name' ? toTrigram(value) : value;
+    setForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const handleGroupIdsChange = (event) => {
@@ -1051,193 +1316,386 @@ function AdminTab({
     setNewGroupName('');
   };
 
+  const handleNewsletterSubmit = (event) => {
+    event.preventDefault();
+    if (!newNewsletter.title.trim()) return;
+    onCreateNewsletter(newNewsletter);
+    setNewNewsletter((prev) => ({ ...prev, title: defaultNewsletterTitle }));
+  };
+
   return (
-    <section className="panel-grid">
-      <article className="panel-card">
-        <header className="panel-header">
-          <h2>Utilisateurs & rôles</h2>
-          <p className="panel-subtitle">
-            Gestion simple, en mémoire, des rôles principaux.
-          </p>
-        </header>
-        <div className="panel-body panel-body--list">
-          {users.map((user) => (
-            <div key={user.id} className="user-row">
-              <div className="user-main">
-                <span className="user-avatar">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
+    <section className="panel-grid panel-grid--single">
+      <div className="admin-tab-nav">
+        {adminTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={
+              activeAdminTab === tab.id
+                ? 'tab-button tab-button--active'
+                : 'tab-button'
+            }
+            onClick={() => setActiveAdminTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeAdminTab === 'newsletters' && (
+        <article className="panel-card panel-card--full">
+          <header className="panel-header">
+            <h2>Newsletters & équipes</h2>
+            <p className="panel-subtitle">
+              Vue rapide des newsletters créées, des contributeurs rattachés et
+              des admins autorisés à publier.
+            </p>
+          </header>
+          <form
+            className="form-grid form-grid--compact admin-newsletter-form"
+            onSubmit={handleNewsletterSubmit}
+          >
+            <label className="field">
+              <span className="field-label">Titre</span>
+              <input
+                type="text"
+                value={newNewsletter.title}
+                onChange={(event) =>
+                  setNewNewsletter((prev) => ({
+                    ...prev,
+                    title: event.target.value
+                  }))
+                }
+                placeholder="Newsletter mensuelle…"
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Service ciblé</span>
+              <select
+                value={newNewsletter.groupId}
+                onChange={(event) =>
+                  setNewNewsletter((prev) => ({
+                    ...prev,
+                    groupId: event.target.value
+                  }))
+                }
+              >
+                <option value="all">Toutes les équipes</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="form-actions form-actions--right">
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={!newNewsletter.title.trim()}
+              >
+                Créer la newsletter
+              </button>
+            </div>
+          </form>
+          <div className="panel-body panel-body--list">
+            {newsletters.length ? (
+              newsletters.map((nl) => {
+                const group = nl.groupId
+                  ? groups.find((g) => g.id === nl.groupId)
+                  : null;
+                const relatedUsers = nl.groupId
+                  ? users.filter((user) =>
+                      (user.groupIds || []).includes(nl.groupId)
+                    )
+                  : users;
+                const contributorUsers = relatedUsers;
+                const adminUsersFromGroup = (group?.adminIds || [])
+                  .map((id) => users.find((u) => u.id === id))
+                  .filter(Boolean);
+                const adminPublishers = adminUsersFromGroup.length
+                  ? adminUsersFromGroup
+                  : relatedUsers.filter(
+                      (u) => u.role === 'admin' || u.role === 'superadmin'
+                    );
+                return (
+                  <div key={nl.id} className="admin-newsletter-row">
+                    <div className="admin-newsletter-header">
+                      <div>
+                        <p className="admin-newsletter-title">{nl.title}</p>
+                        <p className="admin-newsletter-meta">
+                          Audience : {group ? group.name : nl.audience || 'Tous'}
+                        </p>
+                      </div>
+                      <span className="tag tag--soft">
+                        {new Date(nl.date).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+
+                    <div className="admin-newsletter-line">
+                      <span className="admin-line-label">Contributeurs</span>
+                      <div className="admin-chip-row">
+                        {contributorUsers.length ? (
+                          contributorUsers.map((user) => (
+                            <span key={user.id} className="tag tag--soft">
+                              {user.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="helper-text">
+                            Aucun contributeur rattaché
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="admin-newsletter-line">
+                      <span className="admin-line-label">Admins</span>
+                      <div className="admin-chip-row">
+                        {adminPublishers.length ? (
+                          adminPublishers.map((user) => (
+                            <span key={user.id} className="tag tag--soft">
+                              {user.name} · Admin newsletter
+                            </span>
+                          ))
+                        ) : (
+                          <span className="helper-text">
+                            Aucun admin rattaché
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="empty-state">
+                Aucune newsletter publiée pour l’instant.
+              </p>
+            )}
+          </div>
+        </article>
+      )}
+
+      {activeAdminTab === 'users' && (
+        <article className="panel-card">
+          <header className="panel-header">
+            <h2>Utilisateurs & rôles</h2>
+            <p className="panel-subtitle">
+              Gestion simple, en mémoire, des rôles principaux.
+            </p>
+          </header>
+          <div className="panel-body panel-body--list">
+            {users.map((user) => (
+              <div key={user.id} className="user-row">
+                <div className="user-main">
+                  <span className="user-avatar">
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div>
+                    <p className="user-name">{user.name}</p>
+                    <p className="user-meta">
+                      {ROLE_LABELS[user.role]} ·{' '}
+                      {(() => {
+                        const ids = user.groupIds || [];
+                        const names = ids
+                          .map((id) => {
+                            const group = groups.find((g) => g.id === id);
+                            return group ? group.name : null;
+                          })
+                          .filter(Boolean);
+                        if (names.length) return names.join(', ');
+                        return user.group || 'Aucun groupe';
+                      })()}
+                    </p>
+                  </div>
+                </div>
+                <div className="user-side">
+                  <button
+                    type="button"
+                    className="secondary-button user-reset-button"
+                    onClick={() => onResetUserPassword(user.id)}
+                  >
+                    Reset mdp
+                  </button>
+                  <details className="user-groups-dropdown">
+                    <summary>Groupes</summary>
+                    <div className="user-groups-list">
+                      {groups.map((group) => {
+                        const currentIds = user.groupIds || [];
+                        const checked = currentIds.includes(group.id);
+                        return (
+                          <label key={group.id} className="toggle">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const nextIds = checked
+                                  ? currentIds.filter((id) => id !== group.id)
+                                  : [...currentIds, group.id];
+                                onUpdateUserGroups(user.id, nextIds);
+                              }}
+                            />
+                            <span className="toggle-label">{group.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </details>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <form className="form-grid form-grid--compact" onSubmit={handleSubmit}>
+            <label className="field">
+              <span className="field-label">Nom</span>
+              <input
+                name="name"
+                type="text"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Trigramme (ex: GJV)"
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Rôle</span>
+              <select name="role" value={form.role} onChange={handleChange}>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Groupes</span>
+              <select
+                name="groupIds"
+                multiple
+                value={form.groupIds}
+                onChange={handleGroupIdsChange}
+              >
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="form-actions form-actions--right">
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={!form.name.trim()}
+              >
+                Ajouter
+              </button>
+            </div>
+          </form>
+        </article>
+      )}
+
+      {activeAdminTab === 'groups' && (
+        <article className="panel-card panel-card--accent">
+          <header className="panel-header">
+            <h2>Groupes & droits</h2>
+            <p className="panel-subtitle">
+              Choisissez les admins pour chaque groupe à partir des membres.
+            </p>
+          </header>
+          <div className="panel-body panel-body--list">
+            {groups.map((group) => (
+              <div key={group.id} className="group-row">
                 <div>
-                  <p className="user-name">{user.name}</p>
-                  <p className="user-meta">
-                    {ROLE_LABELS[user.role]} ·{' '}
+                  <p className="group-name">{group.name}</p>
+                  <p className="group-meta">
                     {(() => {
-                      const ids = user.groupIds || [];
-                      const names = ids
-                        .map((id) => {
-                          const group = groups.find((g) => g.id === id);
-                          return group ? group.name : null;
-                        })
-                        .filter(Boolean);
-                      if (names.length) return names.join(', ');
-                      return user.group || 'Aucun groupe';
+                      const members = users.filter((user) =>
+                        (user.groupIds || []).includes(group.id)
+                      );
+                      if (!members.length) return 'Aucun membre dans ce groupe';
+                      return members.map((m) => m.name).join(', ');
                     })()}
                   </p>
                 </div>
-              </div>
-              <div className="user-side">
-                <span className="tag tag--soft">{ROLE_LABELS[user.role]}</span>
-                <details className="user-groups-dropdown">
-                  <summary>Groupes</summary>
-                  <div className="user-groups-list">
-                    {groups.map((group) => {
-                      const currentIds = user.groupIds || [];
-                      const checked = currentIds.includes(group.id);
-                      return (
-                        <label key={group.id} className="toggle">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => {
-                              const nextIds = checked
-                                ? currentIds.filter((id) => id !== group.id)
-                                : [...currentIds, group.id];
-                              onUpdateUserGroups(user.id, nextIds);
-                            }}
-                          />
-                          <span className="toggle-label">{group.name}</span>
-                        </label>
+                <div className="group-toggle-row">
+                  <button
+                    type="button"
+                    className="secondary-button group-delete-button"
+                    onClick={() => onDeleteGroup(group.id)}
+                  >
+                    Supprimer
+                  </button>
+                  <div className="group-admin-list">
+                    {(() => {
+                      const members = users.filter((user) =>
+                        (user.groupIds || []).includes(group.id)
                       );
-                    })}
+                      const adminIds = group.adminIds || [];
+                      const extras = (adminIds || [])
+                        .map((id) => users.find((u) => u.id === id))
+                        .filter((u) => u && !members.includes(u));
+                      const candidates = [...members, ...extras];
+                      if (!candidates.length) {
+                        return (
+                          <span className="helper-text">
+                            Ajoutez d’abord des membres à ce groupe
+                          </span>
+                        );
+                      }
+                      return candidates.map((user) => {
+                        const checked = adminIds.includes(user.id);
+                        return (
+                          <label key={user.id} className="toggle">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const next = checked
+                                  ? adminIds.filter((id) => id !== user.id)
+                                  : [...adminIds, user.id];
+                                onUpdateGroupAdmins(group.id, next);
+                              }}
+                            />
+                            <span className="toggle-label">
+                              {user.name} · {checked ? 'Admin newsletter' : 'Utilisateur'}
+                            </span>
+                          </label>
+                        );
+                      });
+                    })()}
                   </div>
-                </details>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        <form className="form-grid form-grid--compact" onSubmit={handleSubmit}>
-          <label className="field">
-            <span className="field-label">Nom</span>
-            <input
-              name="name"
-              type="text"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Nouvel utilisateur…"
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">Rôle</span>
-            <select name="role" value={form.role} onChange={handleChange}>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span className="field-label">Groupes</span>
-            <select
-              name="groupIds"
-              multiple
-              value={form.groupIds}
-              onChange={handleGroupIdsChange}
-            >
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="form-actions form-actions--right">
-            <button
-              type="submit"
-              className="primary-button"
-              disabled={!form.name.trim()}
-            >
-              Ajouter
-            </button>
+            ))}
           </div>
-        </form>
-      </article>
 
-      <article className="panel-card panel-card--accent">
-        <header className="panel-header">
-          <h2>Groupes & droits</h2>
-          <p className="panel-subtitle">
-            Préfiguration simple des permissions par équipe.
-          </p>
-        </header>
-        <div className="panel-body panel-body--list">
-          {groups.map((group) => (
-            <div key={group.id} className="group-row">
-              <div>
-                <p className="group-name">{group.name}</p>
-                <p className="group-meta">
-                  Collecte : {group.canContribute ? 'autorisée' : 'bloquée'} ·
-                  Validation : {group.canApprove ? 'autorisée' : 'bloquée'}
-                </p>
-              </div>
-              <div className="group-toggle-row">
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={group.canContribute}
-                    onChange={() =>
-                      onToggleGroupPermission(group.id, 'canContribute')
-                    }
-                  />
-                  <span className="toggle-label">Collect</span>
-                </label>
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={group.canApprove}
-                    onChange={() =>
-                      onToggleGroupPermission(group.id, 'canApprove')
-                    }
-                  />
-                  <span className="toggle-label">Valider</span>
-                </label>
-                <button
-                  type="button"
-                  className="secondary-button group-delete-button"
-                  onClick={() => onDeleteGroup(group.id)}
-                >
-                  Supprimer
-                </button>
-              </div>
+          <form
+            className="form-grid form-grid--compact"
+            onSubmit={handleNewGroupSubmit}
+          >
+            <label className="field field--full">
+              <span className="field-label">Nouveau groupe</span>
+              <input
+                type="text"
+                value={newGroupName}
+                onChange={(event) => setNewGroupName(event.target.value)}
+                placeholder="Nom du groupe…"
+              />
+            </label>
+            <div className="form-actions form-actions--right">
+              <button
+                type="submit"
+                className="secondary-button"
+                disabled={!newGroupName.trim()}
+              >
+                Créer
+              </button>
             </div>
-          ))}
-        </div>
-
-        <form
-          className="form-grid form-grid--compact"
-          onSubmit={handleNewGroupSubmit}
-        >
-          <label className="field field--full">
-            <span className="field-label">Nouveau groupe</span>
-            <input
-              type="text"
-              value={newGroupName}
-              onChange={(event) => setNewGroupName(event.target.value)}
-              placeholder="Nom du groupe…"
-            />
-          </label>
-          <div className="form-actions form-actions--right">
-            <button
-              type="submit"
-              className="secondary-button"
-              disabled={!newGroupName.trim()}
-            >
-              Créer
-            </button>
-          </div>
-        </form>
-      </article>
+          </form>
+        </article>
+      )}
     </section>
   );
 }
