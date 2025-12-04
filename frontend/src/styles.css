@@ -317,22 +317,26 @@ body {
 .admin-tab-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 4px 6px;
-  margin-bottom: 12px;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 0 0 6px;
+  margin-bottom: 10px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .admin-tab-nav .tab-button {
-  font-size: 14px;
-  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 8px;
   border-radius: 0;
   border: 0;
   box-shadow: none;
+  border-bottom: 2px solid transparent;
 }
 
 .admin-tab-nav .tab-button--active {
-  border-bottom: 2px solid var(--accent);
+  color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 .panel-header--feed h2 {

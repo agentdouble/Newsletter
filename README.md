@@ -14,6 +14,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 - **Collect** : formulaire minimaliste noir & blanc pour que les utilisateurs envoient leurs success/fail stories.
 - **Générateur** : vue admin qui consomme les contributions et génère un texte complet de newsletter, immédiatement poussé dans le fil, avec une surface d’édition simple en noir et blanc (typographie identique à la lecture).
 - **Admin** : gestion simple en mémoire des utilisateurs, rôles (user, admin, super admin) et groupes/équipes, avec création/suppression de groupes et attribution d’un ou plusieurs groupes existants aux utilisateurs dans une liste monochrome épurée, plus un récap des newsletters créées avec les contributeurs rattachés et les admins autorisés à publier. Création rapide d’une newsletter mensuelle depuis l’admin avec assignation à un service (groupe) et choix des admins parmi les membres du groupe, via des onglets « Newsletters & équipes », « Utilisateurs & rôles », « Groupes & droits ». Gestion des comptes : trigrammes (ex : GJV) et bouton de reset de mot de passe par utilisateur.
+- Onglets Admin : espacement resserré et indicateur stable (pas de décalage en changeant d’onglet) pour garder une navigation compacte.
 - Sélecteur de rôle en haut de l’interface pour simuler les permissions, présenté comme une simple barre de navigation noir & blanc.
 
 > Remarque : aucune donnée n’est encore persistée ni connectée à un backend.
