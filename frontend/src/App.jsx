@@ -458,17 +458,37 @@ function FeedTab({
                     : () => onOpenNewsletter(nl.id)
                 }
               >
-                <header className="newsletter-article-header">
-                  <div>
-                    <h3>{nl.title}</h3>
-                    <p className="newsletter-chip-audience">{nl.audience}</p>
+                <div className="newsletter-main">
+                  <header className="newsletter-article-header">
+                    <div>
+                      <h3>{nl.title}</h3>
+                      <p className="newsletter-chip-audience">{nl.audience}</p>
+                    </div>
+                    <div className="newsletter-meta-column">
+                      <span className="tag tag--soft">
+                        {new Date(nl.date).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+                  </header>
+                  <div className="newsletter-body">
+                    {isActive ? (
+                      hasHtml ? (
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: nl.body
+                          }}
+                        />
+                      ) : (
+                        nl.body
+                          .split('\n\n')
+                          .filter((block) => block.trim().length > 0)
+                          .map((block, index) => <p key={index}>{block}</p>)
+                      )
+                    ) : (
+                      <p className="newsletter-snippet">{snippet}</p>
+                    )}
                   </div>
-                  <div className="newsletter-meta-column">
-                    <span className="tag tag--soft">
-                      {new Date(nl.date).toLocaleDateString('fr-FR')}
-                    </span>
-                  </div>
-                </header>
+                </div>
 
                 {nl.imageUrl && (
                   <div className="newsletter-image-wrapper">
@@ -480,25 +500,6 @@ function FeedTab({
                     />
                   </div>
                 )}
-
-                <div className="newsletter-body">
-                  {isActive ? (
-                    hasHtml ? (
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: nl.body
-                        }}
-                      />
-                    ) : (
-                      nl.body
-                        .split('\n\n')
-                        .filter((block) => block.trim().length > 0)
-                        .map((block, index) => <p key={index}>{block}</p>)
-                    )
-                  ) : (
-                    <p className="newsletter-snippet">{snippet}</p>
-                  )}
-                </div>
               </article>
             );
           })}
