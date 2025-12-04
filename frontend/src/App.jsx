@@ -377,7 +377,7 @@ function GeneratorTab({ contributions, targetLabel, draftHtml, onGenerate, onPub
   };
 
   return (
-    <section className="panel-grid">
+    <section className="panel-grid panel-grid--generator">
       <article className="panel-card">
         <header className="panel-header">
           <h2>Contributions à intégrer</h2>

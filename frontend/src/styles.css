@@ -192,8 +192,17 @@ body {
   justify-content: stretch;
 }
 
+.panel-grid--generator {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  align-items: flex-start;
+}
+
 @media (max-width: 900px) {
   .panel-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel-grid--generator {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -556,7 +565,7 @@ body {
   font-family: var(--font-sans);
   font-size: 13px;
   background: rgba(255, 255, 255, 0.97);
-  min-height: 260px;
+  min-height: 60vh;
   outline: none;
 }
 
