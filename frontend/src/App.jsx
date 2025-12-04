@@ -662,13 +662,11 @@ function FeedTab({
                         onClick={(event) =>
                           handleReactionClick(event, nl.id, reaction.id)
                         }
+                        aria-label={`${reaction.label} (${reactions[reaction.id] || 0})`}
                       >
                         <span>{reaction.emoji}</span>
                         <span className="reaction-count">
                           {reactions[reaction.id] || 0}
-                        </span>
-                        <span className="reaction-label">
-                          {reaction.label}
                         </span>
                       </button>
                     ))}
