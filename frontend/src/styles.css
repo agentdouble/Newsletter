@@ -564,13 +564,6 @@ body {
   outline: 2px solid var(--accent-alt);
 }
 
-.draft-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
 .empty-state {
   font-size: 13px;
   color: var(--text-soft);

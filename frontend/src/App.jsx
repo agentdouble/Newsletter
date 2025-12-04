@@ -369,32 +369,6 @@ function GeneratorTab({ contributions, targetLabel, draftHtml, onGenerate, onPub
   const hasContributions = contributions.length > 0;
   const editorRef = useRef(null);
 
-  const handleCopy = () => {
-    const node = editorRef.current;
-    if (!node) return;
-    const text = node.innerText || '';
-    if (!text.trim()) return;
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        console.info('[generator] draft_copied_to_clipboard');
-      })
-      .catch(() => {
-        console.info('[generator] draft_copy_failed');
-      });
-  };
-
-  const applyFormat = (command) => {
-    const node = editorRef.current;
-    if (!node || typeof document === 'undefined') return;
-    node.focus();
-    if (command === 'bold') {
-      document.execCommand('bold');
-    } else if (command === 'unordered-list') {
-      document.execCommand('insertUnorderedList');
-    }
-  };
-
   const handlePublishClick = () => {
     const node = editorRef.current;
     if (!node) return;
@@ -451,32 +425,6 @@ function GeneratorTab({ contributions, targetLabel, draftHtml, onGenerate, onPub
               disabled={!hasContributions}
             >
               Générer un draft
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleCopy}
-              disabled={!draftHtml}
-            >
-              Copier le texte
-            </button>
-          </div>
-          <div className="draft-toolbar">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => applyFormat('bold')}
-              disabled={!draftHtml}
-            >
-              Gras
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => applyFormat('unordered-list')}
-              disabled={!draftHtml}
-            >
-              Liste
             </button>
             <button
               type="button"
