@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const ROLES = ['user', 'admin', 'superadmin'];
 
@@ -8,6 +9,13 @@ const TABS = [
   { id: 'generator', label: 'Générateur', roles: ['admin', 'superadmin'] },
   { id: 'admin', label: 'Admin', roles: ['superadmin'] }
 ];
+
+const TAB_ROUTES = {
+  feed: '/newsletter/fil',
+  collect: '/newsletter/collect',
+  generator: '/newsletter/generateur',
+  admin: '/newsletter/admin'
+};
 
 const ROLE_LABELS = {
   user: 'Utilisateur',
@@ -112,12 +120,19 @@ function buildNewsletterDraft(contributions, label) {
 
 function App() {
   const [role, setRole] = useState('user');
-  const [activeTab, setActiveTab] = useState('feed');
   const [contributions, setContributions] = useState([]);
   const [newsletters, setNewsletters] = useState(mockNewsletters);
   const [users, setUsers] = useState(initialUsers);
   const [groups, setGroups] = useState(initialGroups);
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (location.pathname === '/') {
+      navigate(TAB_ROUTES.feed, { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const currentNewsletterLabel = useMemo(() => {
     const now = new Date();
@@ -131,12 +146,20 @@ function App() {
     [role]
   );
 
+  const currentTabId = useMemo(() => {
+    const match = Object.entries(TAB_ROUTES).find(([, path]) =>
+      location.pathname.startsWith(path)
+    );
+    return match ? match[0] : 'feed';
+  }, [location.pathname]);
+
   const handleRoleChange = (event) => {
     const nextRole = event.target.value;
     console.info('[auth] role_changed', { from: role, to: nextRole });
     setRole(nextRole);
-    if (!TABS.find((t) => t.id === activeTab && t.roles.includes(nextRole))) {
-      setActiveTab('feed');
+    const allowedTabs = TABS.filter((t) => t.roles.includes(nextRole));
+    if (!allowedTabs.find((t) => t.id === currentTabId)) {
+      navigate(TAB_ROUTES.feed);
     }
   };
 
@@ -191,7 +214,8 @@ function App() {
     );
   };
 
-  const currentTab = visibleTabs.find((tab) => tab.id === activeTab) || visibleTabs[0];
+  const currentTab =
+    visibleTabs.find((tab) => tab.id === currentTabId) || visibleTabs[0];
 
   return (
     <div className="app-shell">
@@ -228,7 +252,7 @@ function App() {
               className={
                 tab.id === currentTab.id ? 'tab-button tab-button--active' : 'tab-button'
               }
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => navigate(TAB_ROUTES[tab.id])}
             >
               {tab.label}
             </button>

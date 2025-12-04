@@ -67,6 +67,9 @@ body {
   backdrop-filter: blur(18px);
   box-shadow: var(--shadow-soft);
   gap: 16px;
+  position: sticky;
+  top: 16px;
+  z-index: 20;
 }
 
 .app-header-top {
