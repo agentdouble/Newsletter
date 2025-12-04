@@ -646,6 +646,18 @@ body {
   color: var(--text-soft);
 }
 
+.user-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.user-groups-select {
+  max-width: 140px;
+  font-size: 11px;
+}
+
 .group-row {
   display: flex;
   justify-content: space-between;

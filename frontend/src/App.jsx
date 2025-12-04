@@ -236,6 +236,15 @@ function App() {
     setUsers((prev) => [...prev, entry]);
   };
 
+  const handleUpdateUserGroups = (userId, groupIds) => {
+    console.info('[admin] user_groups_updated', { userId, groupIds });
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === userId ? { ...user, groupIds } : user
+      )
+    );
+  };
+
   const handleToggleGroupPermission = (groupId, key) => {
     setGroups((prev) =>
       prev.map((g) =>
@@ -334,6 +343,7 @@ function App() {
             groups={groups}
             onAddUser={handleAddUser}
             onToggleGroupPermission={handleToggleGroupPermission}
+            onUpdateUserGroups={handleUpdateUserGroups}
           />
         )}
       </main>
@@ -537,7 +547,13 @@ function GeneratorTab({ contributions, targetLabel, draftHtml, onGenerate, onPub
   );
 }
 
-function AdminTab({ users, groups, onAddUser, onToggleGroupPermission }) {
+function AdminTab({
+  users,
+  groups,
+  onAddUser,
+  onToggleGroupPermission,
+  onUpdateUserGroups
+}) {
   const [form, setForm] = useState({
     name: '',
     role: 'user',
@@ -604,7 +620,25 @@ function AdminTab({ users, groups, onAddUser, onToggleGroupPermission }) {
                   </p>
                 </div>
               </div>
-              <span className="tag tag--soft">{ROLE_LABELS[user.role]}</span>
+              <div className="user-side">
+                <span className="tag tag--soft">{ROLE_LABELS[user.role]}</span>
+                <select
+                  className="user-groups-select"
+                  multiple
+                  value={user.groupIds || []}
+                  onChange={(event) => {
+                    const options = Array.from(event.target.selectedOptions || []);
+                    const ids = options.map((option) => option.value);
+                    onUpdateUserGroups(user.id, ids);
+                  }}
+                >
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           ))}
         </div>
