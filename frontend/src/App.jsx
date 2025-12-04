@@ -253,6 +253,19 @@ function App() {
     );
   };
 
+  const handleAddGroup = (name) => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    const entry = {
+      id: `g-${Date.now()}`,
+      name: trimmed,
+      canContribute: true,
+      canApprove: false
+    };
+    console.info('[admin] group_added', entry);
+    setGroups((prev) => [...prev, entry]);
+  };
+
   const currentTab =
     visibleTabs.find((tab) => tab.id === currentTabId) || visibleTabs[0];
 
@@ -342,6 +355,7 @@ function App() {
             users={users}
             groups={groups}
             onAddUser={handleAddUser}
+            onAddGroup={handleAddGroup}
             onToggleGroupPermission={handleToggleGroupPermission}
             onUpdateUserGroups={handleUpdateUserGroups}
           />
@@ -551,6 +565,7 @@ function AdminTab({
   users,
   groups,
   onAddUser,
+  onAddGroup,
   onToggleGroupPermission,
   onUpdateUserGroups
 }) {
@@ -559,6 +574,7 @@ function AdminTab({
     role: 'user',
     groupIds: []
   });
+  const [newGroupName, setNewGroupName] = useState('');
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -584,6 +600,13 @@ function AdminTab({
       role: 'user',
       groupIds: []
     });
+  };
+
+  const handleNewGroupSubmit = (event) => {
+    event.preventDefault();
+    if (!newGroupName.trim()) return;
+    onAddGroup(newGroupName);
+    setNewGroupName('');
   };
 
   return (
@@ -622,22 +645,30 @@ function AdminTab({
               </div>
               <div className="user-side">
                 <span className="tag tag--soft">{ROLE_LABELS[user.role]}</span>
-                <select
-                  className="user-groups-select"
-                  multiple
-                  value={user.groupIds || []}
-                  onChange={(event) => {
-                    const options = Array.from(event.target.selectedOptions || []);
-                    const ids = options.map((option) => option.value);
-                    onUpdateUserGroups(user.id, ids);
-                  }}
-                >
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
+                <details className="user-groups-dropdown">
+                  <summary>Groupes</summary>
+                  <div className="user-groups-list">
+                    {groups.map((group) => {
+                      const currentIds = user.groupIds || [];
+                      const checked = currentIds.includes(group.id);
+                      return (
+                        <label key={group.id} className="toggle">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const nextIds = checked
+                                ? currentIds.filter((id) => id !== group.id)
+                                : [...currentIds, group.id];
+                              onUpdateUserGroups(user.id, nextIds);
+                            }}
+                          />
+                          <span className="toggle-label">{group.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </details>
               </div>
             </div>
           ))}
@@ -733,6 +764,30 @@ function AdminTab({
             </div>
           ))}
         </div>
+
+        <form
+          className="form-grid form-grid--compact"
+          onSubmit={handleNewGroupSubmit}
+        >
+          <label className="field field--full">
+            <span className="field-label">Nouveau groupe</span>
+            <input
+              type="text"
+              value={newGroupName}
+              onChange={(event) => setNewGroupName(event.target.value)}
+              placeholder="Nom du groupe…"
+            />
+          </label>
+          <div className="form-actions form-actions--right">
+            <button
+              type="submit"
+              className="secondary-button"
+              disabled={!newGroupName.trim()}
+            >
+              Créer
+            </button>
+          </div>
+        </form>
       </article>
     </section>
   );
