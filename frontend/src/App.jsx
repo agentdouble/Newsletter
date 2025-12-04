@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 
 const ROLES = ['user', 'admin', 'superadmin'];
 
@@ -66,37 +66,48 @@ const initialGroups = [
   { id: 'g-3', name: 'Communication', canContribute: false, canApprove: true }
 ];
 
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildNewsletterDraft(contributions, label) {
   if (!contributions.length) {
-    return "Aucune contribution pour l'instant.\nInvitez vos équipes à partager leurs wins & fails 🎈";
+    return (
+      '<p>Aucune contribution pour l’instant.</p>' +
+      '<p>Invitez vos équipes à partager les faits marquants du mois dans l’onglet Collect.</p>'
+    );
   }
 
-  const lines = [];
-  lines.push('📰  Newsletter – Draft');
-  lines.push('');
+  const parts = [];
+  parts.push('<p><strong>Newsletter – Draft</strong></p>');
   if (label) {
-    lines.push(`Édition : ${label}`);
-    lines.push('');
+    parts.push(`<p><em>${escapeHtml(label)}</em></p>`);
   }
-  lines.push('Bonjour à toutes et tous,');
-  lines.push(
-    "Cette version rassemble les principaux faits marquants du mois, à partir des contributions envoyées par les équipes."
+  parts.push(
+    '<p>Bonjour à toutes et tous,</p>' +
+      '<p>Cette version rassemble les principaux faits marquants du mois, à partir des contributions envoyées par les équipes.</p>'
   );
-  lines.push('');
 
-  contributions.forEach((c, index) => {
+  const items = contributions.map((c, index) => {
     const snippet =
       c.text && c.text.length > 260
         ? `${c.text.slice(0, 260).trim()}…`
-        : c.text;
-    lines.push(`${index + 1}. ${snippet}`);
-    lines.push('');
+        : c.text || '';
+    return `<li>${escapeHtml(snippet)}</li>`;
   });
 
-  lines.push(
-    'Merci à toutes les équipes pour le temps consacré à documenter ces éléments et pour la qualité des retours partagés.'
+  parts.push(`<ol>${items.join('')}</ol>`);
+  parts.push(
+    '<p>Merci à toutes les équipes pour le temps consacré à documenter ces éléments et pour la qualité des retours partagés.</p>'
   );
-  return lines.join('\n');
+
+  return parts.join('');
 }
 
 function App() {
@@ -106,7 +117,7 @@ function App() {
   const [newsletters, setNewsletters] = useState(mockNewsletters);
   const [users, setUsers] = useState(initialUsers);
   const [groups, setGroups] = useState(initialGroups);
-  const [newsletterDraft, setNewsletterDraft] = useState('');
+  const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
 
   const currentNewsletterLabel = useMemo(() => {
     const now = new Date();
@@ -146,15 +157,18 @@ function App() {
     console.info('[generator] newsletter_draft_generated', {
       contributions: relevantContributions.length
     });
-    setNewsletterDraft(draft);
+    setNewsletterDraftHtml(draft);
+  };
 
+  const handlePublishDraft = (html) => {
+    const body = (html || '').trim();
+    if (!body) return;
     const article = {
       id: `nl-${Date.now()}`,
       title: currentNewsletterLabel,
       date: new Date().toISOString(),
-      mood: 'générée automatiquement',
       audience: 'Toute l’organisation',
-      body: draft
+      body
     };
 
     console.info('[generator] newsletter_published_to_feed', {
@@ -236,8 +250,9 @@ function App() {
               (c) => c.newsletterLabel === currentNewsletterLabel
             )}
             targetLabel={currentNewsletterLabel}
-            draft={newsletterDraft}
+            draftHtml={newsletterDraftHtml}
             onGenerate={handleGenerateDraft}
+            onPublish={handlePublishDraft}
           />
         )}
         {currentTab.id === 'admin' && (
@@ -272,12 +287,18 @@ function FeedTab({ newsletters }) {
                 </div>
               </header>
               <div className="newsletter-body">
-                {nl.body
-                  .split('\n\n')
-                  .filter((block) => block.trim().length > 0)
-                  .map((block, index) => (
-                    <p key={index}>{block}</p>
-                  ))}
+                {nl.body && /<\/?[a-z][\s\S]*>/i.test(nl.body) ? (
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: nl.body
+                    }}
+                  />
+                ) : (
+                  nl.body
+                    .split('\n\n')
+                    .filter((block) => block.trim().length > 0)
+                    .map((block, index) => <p key={index}>{block}</p>)
+                )}
               </div>
             </article>
           ))}
@@ -344,19 +365,41 @@ function CollectTab({ onCreate, targetLabel }) {
   );
 }
 
-function GeneratorTab({ contributions, targetLabel, draft, onGenerate }) {
+function GeneratorTab({ contributions, targetLabel, draftHtml, onGenerate, onPublish }) {
   const hasContributions = contributions.length > 0;
+  const editorRef = useRef(null);
 
   const handleCopy = () => {
-    if (!draft) return;
+    const node = editorRef.current;
+    if (!node) return;
+    const text = node.innerText || '';
+    if (!text.trim()) return;
     navigator.clipboard
-      .writeText(draft)
+      .writeText(text)
       .then(() => {
         console.info('[generator] draft_copied_to_clipboard');
       })
       .catch(() => {
         console.info('[generator] draft_copy_failed');
       });
+  };
+
+  const applyFormat = (command) => {
+    const node = editorRef.current;
+    if (!node || typeof document === 'undefined') return;
+    node.focus();
+    if (command === 'bold') {
+      document.execCommand('bold');
+    } else if (command === 'unordered-list') {
+      document.execCommand('insertUnorderedList');
+    }
+  };
+
+  const handlePublishClick = () => {
+    const node = editorRef.current;
+    if (!node) return;
+    const html = node.innerHTML || '';
+    onPublish(html);
   };
 
   return (
@@ -413,18 +456,43 @@ function GeneratorTab({ contributions, targetLabel, draft, onGenerate }) {
               type="button"
               className="secondary-button"
               onClick={handleCopy}
-              disabled={!draft}
+              disabled={!draftHtml}
             >
               Copier le texte
             </button>
           </div>
-          <textarea
-            className="draft-area"
-            rows={16}
-            value={draft}
-            onChange={() => {}}
-            readOnly
-            placeholder="Le draft généré apparaîtra ici…"
+          <div className="draft-toolbar">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => applyFormat('bold')}
+              disabled={!draftHtml}
+            >
+              Gras
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => applyFormat('unordered-list')}
+              disabled={!draftHtml}
+            >
+              Liste
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handlePublishClick}
+              disabled={!draftHtml}
+            >
+              Publier dans le fil
+            </button>
+          </div>
+          <div
+            ref={editorRef}
+            className="draft-canvas"
+            contentEditable
+            suppressContentEditableWarning
+            dangerouslySetInnerHTML={{ __html: draftHtml || '' }}
           />
         </div>
       </article>
