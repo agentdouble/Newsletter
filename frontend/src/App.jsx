@@ -594,7 +594,7 @@ function CollectTab({ onCreate, targetLabel }) {
             rows={8}
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder="Résumez les faits marquants, décisions importantes, incidents et apprentissages à partager dans la newsletter."
+            placeholder="Résumez les faits marquants côté assurance : lancement d’un parcours indemnisation, nouvelle offre auto/habitation, amélioration service clients, etc."
           />
         </label>
 
@@ -605,7 +605,7 @@ function CollectTab({ onCreate, targetLabel }) {
             rows={5}
             value={successStory}
             onChange={(event) => setSuccessStory(event.target.value)}
-            placeholder="Exemple : une expérimentation gagnante, un saut de performance, un apprentissage actionnable."
+            placeholder="Exemple : réduction du délai de prise en charge sinistre, hausse du NPS après refonte espace assuré, automatisation d’une étape de souscription."
           />
         </label>
 
@@ -616,7 +616,7 @@ function CollectTab({ onCreate, targetLabel }) {
             rows={5}
             value={failStory}
             onChange={(event) => setFailStory(event.target.value)}
-            placeholder="Exemple : un incident, un pari perdu ou une rétrospective qui a fait évoluer une pratique."
+            placeholder="Exemple : incident sur la déclaration de sinistre en ligne, campagne emailing mal ciblée, expérimentation de tarification non concluante."
           />
         </label>
 
