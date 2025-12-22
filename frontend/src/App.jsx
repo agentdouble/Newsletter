@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const ROLES = ['user', 'admin', 'superadmin'];
 
 const REACTIONS = [
@@ -38,80 +40,23 @@ const ROLE_LABELS = {
   superadmin: 'Super admin'
 };
 
-const mockNewsletters = [
-  {
-    id: 'nl-001',
-    title: 'Newsletter Produit · Wins & leçons',
-    date: '2026-02-14',
-    audience: 'Produit & Growth',
-    groupId: 'g-1',
-    imageUrl:
-      'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
-    body:
-      "Cette édition synthétise les principaux enseignements partagés par les équipes Produit au cours du dernier cycle. " +
-      "L’objectif est de donner une vue claire des décisions structurantes, des résultats obtenus et des chantiers encore ouverts, " +
-      "afin que chaque équipe puisse se situer dans la trajectoire globale du produit.\n\n" +
-      "Sur le volet activation, le nouveau parcours d’onboarding a été progressivement déployé à l’ensemble des comptes. " +
-      "Les premiers indicateurs montrent une hausse significative du taux d’activation, portée notamment par une meilleure mise en avant des cas d’usage clés " +
-      "et par une simplification des premiers écrans. Les retours utilisateurs confirment que la compréhension de la proposition de valeur est plus rapide.\n\n" +
-      "Parallèlement, deux incidents majeurs ont été identifiés puis corrigés, avec un impact limité mais réel sur l’expérience. " +
-      "Les équipes ont mis en place des garde-fous supplémentaires et un suivi rapproché des métriques de fiabilité sur les flux concernés. " +
-      "Une synthèse détaillée des actions menées sera partagée dans la documentation produit afin de capitaliser sur ces enseignements.\n\n" +
-      "Les prochaines semaines seront consacrées à consolider ces avancées : suivi des indicateurs d’activation, affinage des parcours secondaires " +
-      "et amélioration du support in-app. L’ambition reste la même : proposer une expérience simple, lisible et cohérente pour l’ensemble des utilisateurs."
-  },
-  {
-    id: 'nl-002',
-    title: 'Ops & Platform · Fails utiles',
-    date: '2026-02-01',
-    audience: 'Tech & Ops',
-    groupId: 'g-2',
-    imageUrl:
-      'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
-    body:
-      "Cette édition est centrée sur l’analyse des incidents récents et sur les mesures prises pour renforcer la robustesse de la plateforme. " +
-      "Elle vise à rendre visibles les arbitrages effectués, les points de vigilance identifiés et les engagements pris vis-à-vis des équipes consommatrices des services.\n\n" +
-      "L’incident API du 21 janvier a servi de point d’ancrage à plusieurs échanges structurés : revue détaillée de la chronologie, clarification des responsabilités, " +
-      "et mise à jour des procédures d’escalade. Ce travail partagé a permis de réduire les zones d’ambiguïté sur la prise de décision et de rendre les attentes explicites " +
-      "en matière de communication en cours d’incident.\n\n" +
-      "Un runbook dédié a été rédigé puis diffusé à l’ensemble des personnes d’astreinte. Il documente les signaux faibles à surveiller, " +
-      "les premiers gestes à effectuer en cas de dégradation des indicateurs et les canaux à utiliser pour informer les équipes impactées. " +
-      "Les prochaines itérations viseront à simplifier encore ce runbook pour le rendre immédiatement actionnable, y compris dans les situations de forte charge.\n\n" +
-      "Au-delà de ce cas particulier, l’enjeu principal reste d’ancrer une culture de partage des incidents, non pas comme des échecs individuels, " +
-      "mais comme des occasions structurées d’amélioration collective. Les retours des différentes équipes sont intégrés dans la roadmap de fiabilisation " +
-      "et serviront de base aux prochains exercices de simulation d’incident."
+async function apiRequest(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
   }
-];
-
-const initialGroups = [
-  {
-    id: 'g-1',
-    name: 'Produit',
-    canContribute: true,
-    canApprove: false,
-    adminIds: []
-  },
-  {
-    id: 'g-2',
-    name: 'Tech',
-    canContribute: true,
-    canApprove: true,
-    adminIds: []
-  },
-  {
-    id: 'g-3',
-    name: 'Communication',
-    canContribute: false,
-    canApprove: true,
-    adminIds: []
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    const message = detail || `Erreur API (${response.status})`;
+    throw new Error(message);
   }
-];
-
-const initialUsers = [
-  { id: 'u-1', name: 'GJV', role: 'user', groupIds: ['g-1'] },
-  { id: 'u-2', name: 'XPD', role: 'admin', groupIds: ['g-3'] },
-  { id: 'u-3', name: 'QLR', role: 'superadmin', groupIds: ['g-1', 'g-2'] }
-];
+  if (response.status === 204) return null;
+  return response.json();
+}
 
 function withEngagement(newsletter) {
   return {
@@ -205,13 +150,13 @@ function buildNewsletterDraft(contributions, label) {
 function App() {
   const [role, setRole] = useState('user');
   const [contributions, setContributions] = useState([]);
-  const [newsletters, setNewsletters] = useState(
-    mockNewsletters.map(withEngagement)
-  );
-  const [users, setUsers] = useState(initialUsers);
-  const [groups, setGroups] = useState(initialGroups);
+  const [newsletters, setNewsletters] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [currentEdition, setCurrentEdition] = useState(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
-  const [activeGroupId, setActiveGroupId] = useState('all');
+  const [activeGroupId] = useState('all');
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -221,12 +166,45 @@ function App() {
     }
   }, [location.pathname, navigate]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadBootstrap = async () => {
+      try {
+        const data = await apiRequest('/api/bootstrap', {
+          signal: controller.signal
+        });
+        if (controller.signal.aborted) return;
+        setCurrentEdition(data.currentEdition || null);
+        setUsers(data.users || []);
+        setGroups(data.groups || []);
+        setNewsletters((data.newsletters || []).map(withEngagement));
+        setContributions(data.contributions || []);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('[bootstrap] failed', error);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsBootstrapping(false);
+        }
+      }
+    };
+
+    loadBootstrap();
+
+    return () => controller.abort();
+  }, []);
+
   const currentNewsletterLabel = useMemo(() => {
+    if (currentEdition?.label) return currentEdition.label;
     const now = new Date();
     const month = now.toLocaleString('fr-FR', { month: 'long' });
     const year = now.getFullYear();
     return `Newsletter mensuelle · ${month} ${year}`;
-  }, []);
+  }, [currentEdition]);
+
+  const currentEditionId = currentEdition?.id || null;
 
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => tab.roles.includes(role)),
@@ -271,23 +249,26 @@ function App() {
     }
   };
 
-  const handleGroupChange = (event) => {
-    const nextGroupId = event.target.value;
-    console.info('[context] active_group_changed', {
-      from: activeGroupId,
-      to: nextGroupId
-    });
-    setActiveGroupId(nextGroupId);
-  };
-
-  const handleCreateContribution = (payload) => {
-    const entry = {
-      id: `c-${Date.now()}`,
-      ...payload,
-      groupId: activeGroupId
+  const handleCreateContribution = async (payload) => {
+    if (!currentEditionId) return;
+    const requestBody = {
+      editionId: currentEditionId,
+      groupId: activeGroupId === 'all' ? null : activeGroupId,
+      author: payload.author || 'Anonyme',
+      text: payload.text || '',
+      successStory: payload.successStory || '',
+      failStory: payload.failStory || ''
     };
-    console.info('[collect] contribution_created', entry);
-    setContributions((prev) => [entry, ...prev]);
+    try {
+      const entry = await apiRequest('/api/contributions', {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+      console.info('[collect] contribution_created', entry);
+      setContributions((prev) => [entry, ...prev]);
+    } catch (error) {
+      console.error('[collect] contribution_failed', error);
+    }
   };
 
   const visibleGeneratorContributions = useMemo(
@@ -312,166 +293,200 @@ function App() {
     setNewsletterDraftHtml(draft);
   };
 
-  const handlePublishDraft = (html, imageUrl) => {
+  const handlePublishDraft = async (html, imageUrl) => {
     const body = (html || '').trim();
     if (!body) return;
-    const targetGroup =
-      activeGroupId === 'all'
-        ? null
-        : groups.find((group) => group.id === activeGroupId) || null;
-    const article = {
-      id: `nl-${Date.now()}`,
+    const payload = {
       title: currentNewsletterLabel,
-      date: new Date().toISOString(),
-      audience: targetGroup ? targetGroup.name : 'Toute l’organisation',
       body,
-      groupId: activeGroupId === 'all' ? null : activeGroupId,
       imageUrl: imageUrl || null,
-      reactions: { ...REACTION_BASELINE },
-      comments: []
+      groupId: activeGroupId === 'all' ? null : activeGroupId,
+      editionId: currentEditionId
     };
 
-    console.info('[generator] newsletter_published_to_feed', {
-      id: article.id,
-      groupId: article.groupId,
-      hasImage: Boolean(article.imageUrl)
-    });
-    setNewsletters((prev) => [article, ...prev]);
+    try {
+      const article = await apiRequest('/api/newsletters', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      console.info('[generator] newsletter_published_to_feed', {
+        id: article.id,
+        groupId: article.groupId,
+        hasImage: Boolean(article.imageUrl)
+      });
+      setNewsletters((prev) => [withEngagement(article), ...prev]);
+    } catch (error) {
+      console.error('[generator] publish_failed', error);
+    }
   };
 
-  const handleReactToNewsletter = (newsletterId, reactionId) => {
+  const handleReactToNewsletter = async (newsletterId, reactionId) => {
     if (!Object.prototype.hasOwnProperty.call(REACTION_BASELINE, reactionId)) {
       return;
     }
-    setNewsletters((prev) =>
-      prev.map((nl) => {
-        if (nl.id !== newsletterId) return nl;
-        const safeReactions = {
-          ...REACTION_BASELINE,
-          ...(nl.reactions || {})
-        };
-        return {
-          ...nl,
-          reactions: {
-            ...safeReactions,
-            [reactionId]: (safeReactions[reactionId] || 0) + 1
-          }
-        };
-      })
-    );
-    console.info('[feed] reaction_recorded', {
-      id: newsletterId,
-      reaction: reactionId
-    });
+    try {
+      const data = await apiRequest(`/api/newsletters/${newsletterId}/reactions`, {
+        method: 'POST',
+        body: JSON.stringify({ reactionId })
+      });
+      setNewsletters((prev) =>
+        prev.map((nl) =>
+          nl.id === newsletterId
+            ? { ...nl, reactions: { ...REACTION_BASELINE, ...data.reactions } }
+            : nl
+        )
+      );
+      console.info('[feed] reaction_recorded', {
+        id: newsletterId,
+        reaction: reactionId
+      });
+    } catch (error) {
+      console.error('[feed] reaction_failed', error);
+    }
   };
 
-  const handleAddComment = (newsletterId, body) => {
+  const handleAddComment = async (newsletterId, body) => {
     const trimmed = (body || '').trim();
     if (!trimmed) return;
-    const entry = {
-      id: `cm-${Date.now()}`,
-      author: commentAuthor,
-      body: trimmed,
-      createdAt: new Date().toISOString()
-    };
-    console.info('[feed] comment_added', {
-      id: newsletterId,
-      author: commentAuthor
-    });
-    setNewsletters((prev) =>
-      prev.map((nl) =>
-        nl.id === newsletterId
-          ? { ...nl, comments: [entry, ...(nl.comments || [])] }
-          : nl
-      )
-    );
+    try {
+      const entry = await apiRequest(
+        `/api/newsletters/${newsletterId}/comments`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ author: commentAuthor, body: trimmed })
+        }
+      );
+      console.info('[feed] comment_added', {
+        id: newsletterId,
+        author: commentAuthor
+      });
+      setNewsletters((prev) =>
+        prev.map((nl) =>
+          nl.id === newsletterId
+            ? { ...nl, comments: [entry, ...(nl.comments || [])] }
+            : nl
+        )
+      );
+    } catch (error) {
+      console.error('[feed] comment_failed', error);
+    }
   };
 
-  const handleCreateNewsletter = ({ title, groupId }) => {
+  const handleCreateNewsletter = async ({ title, groupId }) => {
     const trimmedTitle = (title || '').trim();
     if (!trimmedTitle) return;
-    const targetGroup =
-      groupId && groupId !== 'all'
-        ? groups.find((g) => g.id === groupId)
-        : null;
-    const entry = {
-      id: `nl-${Date.now()}`,
+    const payload = {
       title: trimmedTitle,
-      date: new Date().toISOString(),
-      audience: targetGroup ? targetGroup.name : 'Toute l’organisation',
       body: 'Brouillon à compléter.',
-      groupId: targetGroup ? targetGroup.id : null,
-      imageUrl: null,
-      reactions: { ...REACTION_BASELINE },
-      comments: []
+      groupId: groupId && groupId !== 'all' ? groupId : null,
+      editionId: currentEditionId
     };
-    console.info('[admin] newsletter_created', {
-      id: entry.id,
-      groupId: entry.groupId
-    });
-    setNewsletters((prev) => [entry, ...prev]);
+    try {
+      const entry = await apiRequest('/api/newsletters', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      console.info('[admin] newsletter_created', {
+        id: entry.id,
+        groupId: entry.groupId
+      });
+      setNewsletters((prev) => [withEngagement(entry), ...prev]);
+    } catch (error) {
+      console.error('[admin] newsletter_failed', error);
+    }
   };
 
-  const handleAddUser = (user) => {
+  const handleAddUser = async (user) => {
     const trigram = toTrigram(user.name);
     if (!trigram) return;
-    const entry = { id: `u-${Date.now()}`, ...user, name: trigram };
-    console.info('[admin] user_added', entry);
-    setUsers((prev) => [...prev, entry]);
+    try {
+      const entry = await apiRequest('/api/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: trigram,
+          role: user.role,
+          groupIds: user.groupIds || []
+        })
+      });
+      console.info('[admin] user_added', entry);
+      setUsers((prev) => [...prev, entry]);
+    } catch (error) {
+      console.error('[admin] user_add_failed', error);
+    }
   };
 
   const handleResetUserPassword = (userId) => {
     console.info('[admin] user_password_reset', { userId });
   };
 
-  const handleUpdateUserGroups = (userId, groupIds) => {
-    console.info('[admin] user_groups_updated', { userId, groupIds });
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId ? { ...user, groupIds } : user
-      )
-    );
+  const handleUpdateUserGroups = async (userId, groupIds) => {
+    try {
+      const entry = await apiRequest(`/api/users/${userId}/groups`, {
+        method: 'PUT',
+        body: JSON.stringify({ groupIds })
+      });
+      console.info('[admin] user_groups_updated', { userId, groupIds });
+      setUsers((prev) =>
+        prev.map((user) => (user.id === userId ? entry : user))
+      );
+    } catch (error) {
+      console.error('[admin] user_groups_failed', error);
+    }
   };
 
-  const handleUpdateGroupAdmins = (groupId, adminIds) => {
-    console.info('[admin] group_admins_updated', { groupId, adminIds });
-    setGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, adminIds } : g))
-    );
-    setUsers((prev) =>
-      prev.map((user) => {
-        if (!adminIds.includes(user.id)) return user;
-        const ids = user.groupIds || [];
-        if (ids.includes(groupId)) return user;
-        return { ...user, groupIds: [...ids, groupId] };
-      })
-    );
+  const handleUpdateGroupAdmins = async (groupId, adminIds) => {
+    try {
+      const entry = await apiRequest(`/api/groups/${groupId}/admins`, {
+        method: 'PUT',
+        body: JSON.stringify({ adminIds })
+      });
+      console.info('[admin] group_admins_updated', { groupId, adminIds });
+      setGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? entry : g))
+      );
+      setUsers((prev) =>
+        prev.map((user) => {
+          if (!adminIds.includes(user.id)) return user;
+          const ids = user.groupIds || [];
+          if (ids.includes(groupId)) return user;
+          return { ...user, groupIds: [...ids, groupId] };
+        })
+      );
+    } catch (error) {
+      console.error('[admin] group_admins_failed', error);
+    }
   };
 
-  const handleAddGroup = (name) => {
+  const handleAddGroup = async (name) => {
     const trimmed = (name || '').trim();
     if (!trimmed) return;
-    const entry = {
-      id: `g-${Date.now()}`,
-      name: trimmed,
-      canContribute: true,
-      canApprove: false,
-      adminIds: []
-    };
-    console.info('[admin] group_added', entry);
-    setGroups((prev) => [...prev, entry]);
+    try {
+      const entry = await apiRequest('/api/groups', {
+        method: 'POST',
+        body: JSON.stringify({ name: trimmed })
+      });
+      console.info('[admin] group_added', entry);
+      setGroups((prev) => [...prev, entry]);
+    } catch (error) {
+      console.error('[admin] group_add_failed', error);
+    }
   };
 
-  const handleDeleteGroup = (groupId) => {
-    console.info('[admin] group_deleted', { groupId });
-    setGroups((prev) => prev.filter((g) => g.id !== groupId));
-    setUsers((prev) =>
-      prev.map((user) => {
-        const ids = user.groupIds || [];
-        if (!ids.includes(groupId)) return user;
-        return { ...user, groupIds: ids.filter((id) => id !== groupId) };
-      })
-    );
+  const handleDeleteGroup = async (groupId) => {
+    try {
+      await apiRequest(`/api/groups/${groupId}`, { method: 'DELETE' });
+      console.info('[admin] group_deleted', { groupId });
+      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      setUsers((prev) =>
+        prev.map((user) => {
+          const ids = user.groupIds || [];
+          if (!ids.includes(groupId)) return user;
+          return { ...user, groupIds: ids.filter((id) => id !== groupId) };
+        })
+      );
+    } catch (error) {
+      console.error('[admin] group_delete_failed', error);
+    }
   };
 
   const handleOpenNewsletter = (newsletterId) => {
@@ -551,6 +566,7 @@ function App() {
           <CollectTab
             targetLabel={currentNewsletterLabel}
             onCreate={handleCreateContribution}
+            isReady={!isBootstrapping && Boolean(currentEditionId)}
           />
         )}
         {currentTab.id === 'contributions' && (
@@ -602,11 +618,6 @@ function FeedTab({
 }) {
   const [commentDrafts, setCommentDrafts] = useState({});
 
-  const activeGroupName =
-    activeGroupId === 'all'
-      ? 'Toutes les équipes'
-      : (groups.find((g) => g.id === activeGroupId) || {}).name ||
-        'Toutes les équipes';
   const visibleNewsletters =
     activeGroupId === 'all'
       ? newsletters
@@ -872,13 +883,14 @@ function FeedTab({
   );
 }
 
-function CollectTab({ onCreate, targetLabel }) {
+function CollectTab({ onCreate, targetLabel, isReady }) {
   const [text, setText] = useState('');
   const [successStory, setSuccessStory] = useState('');
   const [failStory, setFailStory] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (!isReady) return;
     const main = text.trim();
     const success = successStory.trim();
     const fail = failStory.trim();
@@ -896,7 +908,7 @@ function CollectTab({ onCreate, targetLabel }) {
   };
 
   const isSubmitDisabled =
-    !text.trim() && !successStory.trim() && !failStory.trim();
+    !isReady || (!text.trim() && !successStory.trim() && !failStory.trim());
 
   return (
     <section className="panel-card panel-card--wide">
