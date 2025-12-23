@@ -13,11 +13,21 @@ class Settings:
     env: str
 
 
+def normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return f"postgresql+psycopg://{url[len('postgres://'):]}"
+    if url.startswith("postgresql://"):
+        return f"postgresql+psycopg://{url[len('postgresql://'):]}"
+    return url
+
+
 def get_settings() -> Settings:
     return Settings(
-        database_url=os.getenv(
-            "DATABASE_URL",
-            "postgresql+psycopg://postgres:postgres@localhost:5432/anjanews",
+        database_url=normalize_database_url(
+            os.getenv(
+                "DATABASE_URL",
+                "postgresql+psycopg://postgres:postgres@localhost:5432/anjanews",
+            )
         ),
         frontend_port=int(os.getenv("FRONTEND_PORT", "5173")),
         backend_port=int(os.getenv("BACKEND_PORT", "8000")),
