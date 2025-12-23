@@ -33,7 +33,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 Copiez `.env.example` vers `.env` et ajustez les valeurs si besoin :
 
 - `DATABASE_URL` (connexion PostgreSQL)
-- `BACKEND_PORT` / `FRONTEND_PORT`
+- `BACKEND_PORT` / `FRONTEND_PORT` (ces ports pilotent le backend + le frontend, et les CORS s’alignent sur `FRONTEND_PORT`)
 - `VITE_API_URL` (optionnel si vous lancez le frontend séparément)
 - `ENV` et `LOG_LEVEL`
 
@@ -52,6 +52,7 @@ Utilisez toujours le script de lancement :
 ```
 
 - Le script installe les dépendances, applique les migrations et démarre backend + frontend.
+- Les ports configurés dans `.env` sont libérés si déjà utilisés, pour éviter un démarrage sur un port inattendu.
 - L’interface est servie par Vite (port `FRONTEND_PORT`).
 
 ## Notes d’architecture
