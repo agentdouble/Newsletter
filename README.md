@@ -30,7 +30,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 
 ## Configuration
 
-Copiez `.env.example` vers `.env` et ajustez les valeurs si besoin :
+Copiez `.env.example` (ou `.env.exemple`) vers `.env` et ajustez les valeurs si besoin :
 
 - `DATABASE_URL` (connexion PostgreSQL)
 - `BACKEND_PORT` / `FRONTEND_PORT` (ces ports pilotent le backend + le frontend, et les CORS s’alignent sur `FRONTEND_PORT`)
