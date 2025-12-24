@@ -1429,38 +1429,26 @@ function FeedTab({
 
 function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
   const [text, setText] = useState('');
-  const [successStory, setSuccessStory] = useState('');
-  const [failStory, setFailStory] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!isReady) return;
     const main = text.trim();
-    const success = successStory.trim();
-    const fail = failStory.trim();
-    if (!main && !success && !fail) return;
-    onCreate({
-      newsletterLabel: targetLabel,
-      text: main,
-      successStory: success,
-      failStory: fail
-    });
+    if (!main) return;
+    onCreate({ newsletterLabel: targetLabel, text: main });
     setText('');
-    setSuccessStory('');
-    setFailStory('');
   };
 
-  const isSubmitDisabled =
-    !isReady || (!text.trim() && !successStory.trim() && !failStory.trim());
+  const isSubmitDisabled = !isReady || !text.trim();
 
   return (
     <section className="panel-card panel-card--wide">
       <header className="panel-header">
         <h2>Partager les nouveautés du mois</h2>
         <p className="panel-subtitle">
-          Trois blocs pour consigner les faits marquants, une success story et
-          une fail story utiles aux autres équipes. Votre compte connecté (
-          {authorLabel || 'utilisateur'}) signe automatiquement la contribution.
+          Un seul bloc pour consigner les faits marquants utiles aux autres
+          équipes. Votre compte connecté ({authorLabel || 'utilisateur'}) signe
+          automatiquement la contribution.
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
@@ -1473,32 +1461,10 @@ function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
           <span className="field-label">Nouveautés du mois</span>
           <textarea
             className="notepad-textarea"
-            rows={4}
+            rows={5}
             value={text}
             onChange={(event) => setText(event.target.value)}
             placeholder="Résumez les faits marquants côté assurance : lancement d’un parcours indemnisation, nouvelle offre auto/habitation, amélioration service clients, etc."
-          />
-        </label>
-
-        <label className="field field--full">
-          <span className="field-label">Success story</span>
-          <textarea
-            className="notepad-textarea"
-            rows={3}
-            value={successStory}
-            onChange={(event) => setSuccessStory(event.target.value)}
-            placeholder="Exemple : réduction du délai de prise en charge sinistre, hausse du NPS après refonte espace assuré, automatisation d’une étape de souscription."
-          />
-        </label>
-
-        <label className="field field--full">
-          <span className="field-label">Fail story</span>
-          <textarea
-            className="notepad-textarea"
-            rows={3}
-            value={failStory}
-            onChange={(event) => setFailStory(event.target.value)}
-            placeholder="Exemple : incident sur la déclaration de sinistre en ligne, campagne emailing mal ciblée, expérimentation de tarification non concluante."
           />
         </label>
 
