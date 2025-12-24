@@ -11,6 +11,8 @@ class Settings:
     backend_port: int
     log_level: str
     env: str
+    session_ttl_hours: int
+    password_min_length: int
 
 
 def normalize_database_url(url: str) -> str:
@@ -33,4 +35,6 @@ def get_settings() -> Settings:
         backend_port=int(os.getenv("BACKEND_PORT", "8000")),
         log_level=os.getenv("LOG_LEVEL", "info"),
         env=os.getenv("ENV", "development"),
+        session_ttl_hours=int(os.getenv("SESSION_TTL_HOURS", "12")),
+        password_min_length=int(os.getenv("PASSWORD_MIN_LENGTH", "10")),
     )

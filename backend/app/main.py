@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import base64
+import binascii
+import hashlib
+import hmac
 import logging
-from datetime import date
+import secrets
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
@@ -22,6 +27,7 @@ from .models import (
     GroupMembership,
     Newsletter,
     User,
+    UserSession,
 )
 from .settings import get_settings
 
@@ -34,6 +40,10 @@ logging.basicConfig(
 logger = logging.getLogger("anjanews")
 
 app = FastAPI(title="Anjanews API")
+
+PASSWORD_ALGORITHM = "pbkdf2_sha256"
+PASSWORD_ITERATIONS = 210_000
+SESSION_TTL = timedelta(hours=settings.session_ttl_hours)
 
 frontend_origin = f"http://localhost:{settings.frontend_port}"
 frontend_alt_origin = f"http://127.0.0.1:{settings.frontend_port}"
@@ -50,7 +60,7 @@ app.add_middleware(
 class ContributionIn(BaseModel):
     editionId: UUID
     groupId: Optional[UUID] = None
-    author: str
+    author: Optional[str] = None
     text: Optional[str] = None
     successStory: Optional[str] = None
     failStory: Optional[str] = None
@@ -69,7 +79,7 @@ class ReactionIn(BaseModel):
 
 
 class CommentIn(BaseModel):
-    author: str
+    author: Optional[str] = None
     body: str
 
 
@@ -77,6 +87,7 @@ class UserIn(BaseModel):
     name: str
     role: Literal["user", "admin", "superadmin"]
     groupIds: list[UUID] = Field(default_factory=list)
+    temporaryPassword: str
 
 
 class UserGroupsIn(BaseModel):
@@ -93,12 +104,154 @@ class GroupAdminsIn(BaseModel):
     adminIds: list[UUID] = Field(default_factory=list)
 
 
+class LoginIn(BaseModel):
+    name: str
+    password: str
+
+
+class PasswordChangeIn(BaseModel):
+    currentPassword: str
+    newPassword: str
+
+
+class BootstrapIn(BaseModel):
+    name: str
+    password: str
+
+
 def get_session() -> Session:
     session = SessionLocal()
     try:
         yield session
     finally:
         session.close()
+
+
+def normalize_user_name(name: str) -> str:
+    return name.strip().upper()
+
+
+def ensure_password_strength(password: str) -> None:
+    if len(password) < settings.password_min_length:
+        raise HTTPException(status_code=400, detail="PASSWORD_TOO_SHORT")
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt, PASSWORD_ITERATIONS
+    )
+    salt_b64 = base64.b64encode(salt).decode("utf-8")
+    digest_b64 = base64.b64encode(digest).decode("utf-8")
+    return f"{PASSWORD_ALGORITHM}${PASSWORD_ITERATIONS}${salt_b64}${digest_b64}"
+
+
+def verify_password(password: str, encoded_hash: str) -> bool:
+    try:
+        algorithm, iterations_raw, salt_b64, digest_b64 = encoded_hash.split("$", 3)
+    except ValueError:
+        return False
+    if algorithm != PASSWORD_ALGORITHM:
+        return False
+    try:
+        iterations = int(iterations_raw)
+        salt = base64.b64decode(salt_b64.encode("utf-8"))
+        expected = base64.b64decode(digest_b64.encode("utf-8"))
+    except (ValueError, binascii.Error):
+        return False
+    candidate = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt, iterations
+    )
+    return hmac.compare_digest(candidate, expected)
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_session_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def generate_temporary_password() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghijkmnopqrstuvwxyz"
+    return "".join(secrets.choice(alphabet) for _ in range(12))
+
+
+def issue_session(session: Session, user: User) -> str:
+    token = generate_session_token()
+    session.add(
+        UserSession(
+            user_id=user.id,
+            token_hash=hash_token(token),
+            expires_at=datetime.now(timezone.utc) + SESSION_TTL,
+        )
+    )
+    return token
+
+
+def get_bearer_token(authorization: Optional[str]) -> Optional[str]:
+    if not authorization:
+        return None
+    scheme, _, value = authorization.partition(" ")
+    if scheme.lower() != "bearer":
+        return None
+    token = value.strip()
+    return token or None
+
+
+def load_session_from_token(session: Session, token: str) -> Optional[UserSession]:
+    now = datetime.now(timezone.utc)
+    stmt = (
+        select(UserSession)
+        .options(selectinload(UserSession.user))
+        .where(
+            UserSession.token_hash == hash_token(token),
+            UserSession.revoked_at.is_(None),
+            UserSession.expires_at > now,
+        )
+    )
+    return session.scalar(stmt)
+
+
+def get_current_session(
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+) -> UserSession:
+    token = get_bearer_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="AUTH_REQUIRED")
+    active_session = load_session_from_token(session, token)
+    if not active_session or not active_session.user:
+        raise HTTPException(status_code=401, detail="AUTH_REQUIRED")
+    return active_session
+
+
+def get_current_user(
+    current_session: UserSession = Depends(get_current_session),
+) -> User:
+    user = current_session.user
+    if user.must_reset_password:
+        raise HTTPException(status_code=403, detail="PASSWORD_RESET_REQUIRED")
+    return user
+
+
+def get_current_user_allow_reset(
+    current_session: UserSession = Depends(get_current_session),
+) -> User:
+    return current_session.user
+
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in {"admin", "superadmin"}:
+        raise HTTPException(status_code=403, detail="ADMIN_REQUIRED")
+    return current_user
+
+
+def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="SUPERADMIN_REQUIRED")
+    return current_user
 
 
 def build_edition_label(period_start: date) -> str:
@@ -144,6 +297,7 @@ def serialize_user(user: User) -> dict:
         "name": user.name,
         "role": user.role,
         "groupIds": group_ids,
+        "mustReset": user.must_reset_password,
     }
 
 
@@ -203,8 +357,128 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.post("/api/auth/bootstrap", status_code=status.HTTP_201_CREATED)
+def bootstrap_auth(payload: BootstrapIn, session: Session = Depends(get_session)) -> dict:
+    session.execute(text("LOCK TABLE users IN EXCLUSIVE MODE"))
+    existing_users = session.scalar(select(func.count(User.id))) or 0
+    if existing_users:
+        raise HTTPException(status_code=409, detail="BOOTSTRAP_ALREADY_COMPLETED")
+
+    name = normalize_user_name(payload.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="User name required")
+    ensure_password_strength(payload.password)
+
+    now = datetime.now(timezone.utc)
+    entry = User(
+        name=name,
+        role="superadmin",
+        password_hash=hash_password(payload.password),
+        must_reset_password=False,
+        password_updated_at=now,
+    )
+    session.add(entry)
+    session.flush()
+
+    token = issue_session(session, entry)
+    entry.last_login_at = now
+    session.commit()
+    session.refresh(entry)
+
+    logger.info("auth_bootstrap_created", extra={"id": str(entry.id)})
+
+    return {"token": token, "user": serialize_user(entry), "mustReset": entry.must_reset_password}
+
+
+@app.post("/api/auth/login")
+def login(payload: LoginIn, session: Session = Depends(get_session)) -> dict:
+    name = normalize_user_name(payload.name)
+    if not name or not payload.password:
+        raise HTTPException(status_code=400, detail="Missing credentials")
+
+    user = session.scalar(
+        select(User).options(selectinload(User.memberships)).where(User.name == name)
+    )
+    if not user or not user.password_hash:
+        logger.warning("auth_login_failed", extra={"name": name})
+        raise HTTPException(status_code=401, detail="INVALID_CREDENTIALS")
+
+    if not verify_password(payload.password, user.password_hash):
+        logger.warning("auth_login_failed", extra={"name": name})
+        raise HTTPException(status_code=401, detail="INVALID_CREDENTIALS")
+
+    token = issue_session(session, user)
+    user.last_login_at = datetime.now(timezone.utc)
+    session.commit()
+    session.refresh(user)
+
+    logger.info("auth_login_success", extra={"id": str(user.id)})
+
+    return {"token": token, "user": serialize_user(user), "mustReset": user.must_reset_password}
+
+
+@app.get("/api/auth/me")
+def auth_me(current_session: UserSession = Depends(get_current_session)) -> dict:
+    user = current_session.user
+    return {"user": serialize_user(user), "mustReset": user.must_reset_password}
+
+
+@app.post("/api/auth/logout")
+def logout(
+    current_session: UserSession = Depends(get_current_session),
+    session: Session = Depends(get_session),
+) -> dict:
+    current_session.revoked_at = datetime.now(timezone.utc)
+    session.commit()
+
+    logger.info(
+        "auth_logout",
+        extra={"user_id": str(current_session.user_id), "session_id": str(current_session.id)},
+    )
+
+    return {"status": "ok"}
+
+
+@app.post("/api/auth/change-password")
+def change_password(
+    payload: PasswordChangeIn,
+    current_session: UserSession = Depends(get_current_session),
+    session: Session = Depends(get_session),
+) -> dict:
+    user = current_session.user
+    if not user.password_hash or not verify_password(
+        payload.currentPassword, user.password_hash
+    ):
+        raise HTTPException(status_code=401, detail="INVALID_CREDENTIALS")
+
+    ensure_password_strength(payload.newPassword)
+    user.password_hash = hash_password(payload.newPassword)
+    user.must_reset_password = False
+    user.password_updated_at = datetime.now(timezone.utc)
+
+    session.execute(
+        update(UserSession)
+        .where(
+            UserSession.user_id == user.id,
+            UserSession.revoked_at.is_(None),
+            UserSession.id != current_session.id,
+        )
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+
+    session.commit()
+    session.refresh(user)
+
+    logger.info("auth_password_changed", extra={"id": str(user.id)})
+
+    return {"user": serialize_user(user), "mustReset": user.must_reset_password}
+
+
 @app.get("/api/editions/current")
-def current_edition(session: Session = Depends(get_session)) -> dict:
+def current_edition(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
     edition = get_or_create_current_edition(session)
     return {
         "id": str(edition.id),
@@ -214,7 +488,10 @@ def current_edition(session: Session = Depends(get_session)) -> dict:
 
 
 @app.get("/api/bootstrap")
-def bootstrap(session: Session = Depends(get_session)) -> dict:
+def bootstrap(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
     edition = get_or_create_current_edition(session)
 
     users = session.scalars(
@@ -250,12 +527,12 @@ def bootstrap(session: Session = Depends(get_session)) -> dict:
 
 @app.post("/api/contributions", status_code=status.HTTP_201_CREATED)
 def create_contribution(
-    payload: ContributionIn, session: Session = Depends(get_session)
+    payload: ContributionIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     if not (payload.text or payload.successStory or payload.failStory):
         raise HTTPException(status_code=400, detail="Contribution is empty")
-    if not payload.author.strip():
-        raise HTTPException(status_code=400, detail="Author required")
 
     edition = session.get(Edition, payload.editionId)
     if not edition:
@@ -269,7 +546,7 @@ def create_contribution(
     entry = Contribution(
         edition_id=payload.editionId,
         group_id=payload.groupId,
-        author=payload.author.strip(),
+        author=current_user.name,
         text=payload.text,
         success_story=payload.successStory,
         fail_story=payload.failStory,
@@ -286,7 +563,9 @@ def create_contribution(
 
 @app.post("/api/newsletters", status_code=status.HTTP_201_CREATED)
 def create_newsletter(
-    payload: NewsletterIn, session: Session = Depends(get_session)
+    payload: NewsletterIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_admin),
 ) -> dict:
     title = payload.title.strip()
     body = payload.body.strip()
@@ -323,7 +602,10 @@ def create_newsletter(
 
 @app.post("/api/newsletters/{newsletter_id}/reactions")
 def add_reaction(
-    newsletter_id: UUID, payload: ReactionIn, session: Session = Depends(get_session)
+    newsletter_id: UUID,
+    payload: ReactionIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     if payload.reactionId not in {"up", "down"}:
         raise HTTPException(status_code=400, detail="Unknown reaction")
@@ -359,12 +641,13 @@ def add_reaction(
 
 @app.post("/api/newsletters/{newsletter_id}/comments", status_code=status.HTTP_201_CREATED)
 def add_comment(
-    newsletter_id: UUID, payload: CommentIn, session: Session = Depends(get_session)
+    newsletter_id: UUID,
+    payload: CommentIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     if not payload.body.strip():
         raise HTTPException(status_code=400, detail="Comment body required")
-    if not payload.author.strip():
-        raise HTTPException(status_code=400, detail="Author required")
 
     newsletter = session.get(Newsletter, newsletter_id)
     if not newsletter:
@@ -372,7 +655,7 @@ def add_comment(
 
     entry = Comment(
         newsletter_id=newsletter_id,
-        author=payload.author.strip(),
+        author=current_user.name,
         body=payload.body.strip(),
     )
     session.add(entry)
@@ -385,12 +668,23 @@ def add_comment(
 
 
 @app.post("/api/users", status_code=status.HTTP_201_CREATED)
-def create_user(payload: UserIn, session: Session = Depends(get_session)) -> dict:
-    name = payload.name.strip().upper()
+def create_user(
+    payload: UserIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_superadmin),
+) -> dict:
+    name = normalize_user_name(payload.name)
     if not name:
         raise HTTPException(status_code=400, detail="User name required")
 
-    entry = User(name=name, role=payload.role)
+    ensure_password_strength(payload.temporaryPassword)
+    entry = User(
+        name=name,
+        role=payload.role,
+        password_hash=hash_password(payload.temporaryPassword),
+        must_reset_password=True,
+        password_updated_at=datetime.now(timezone.utc),
+    )
     session.add(entry)
 
     memberships = []
@@ -409,15 +703,53 @@ def create_user(payload: UserIn, session: Session = Depends(get_session)) -> dic
 
     session.refresh(entry)
 
-    logger.info("user_created", extra={"id": str(entry.id)})
+    logger.info(
+        "user_created", extra={"id": str(entry.id), "by": str(current_user.id)}
+    )
 
     entry.memberships = memberships
     return serialize_user(entry)
 
 
+@app.post("/api/users/{user_id}/reset-password")
+def reset_user_password(
+    user_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_superadmin),
+) -> dict:
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    temporary_password = generate_temporary_password()
+    user.password_hash = hash_password(temporary_password)
+    user.must_reset_password = True
+    user.password_updated_at = datetime.now(timezone.utc)
+
+    session.execute(
+        update(UserSession)
+        .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+    session.commit()
+
+    logger.info(
+        "user_password_reset", extra={"id": str(user.id), "by": str(current_user.id)}
+    )
+
+    return {
+        "userId": str(user.id),
+        "temporaryPassword": temporary_password,
+        "mustReset": user.must_reset_password,
+    }
+
+
 @app.put("/api/users/{user_id}/groups")
 def update_user_groups(
-    user_id: UUID, payload: UserGroupsIn, session: Session = Depends(get_session)
+    user_id: UUID,
+    payload: UserGroupsIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_superadmin),
 ) -> dict:
     user = session.get(User, user_id)
     if not user:
@@ -454,7 +786,11 @@ def update_user_groups(
 
 
 @app.post("/api/groups", status_code=status.HTTP_201_CREATED)
-def create_group(payload: GroupIn, session: Session = Depends(get_session)) -> dict:
+def create_group(
+    payload: GroupIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_superadmin),
+) -> dict:
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Group name required")
@@ -481,7 +817,10 @@ def create_group(payload: GroupIn, session: Session = Depends(get_session)) -> d
 
 @app.put("/api/groups/{group_id}/admins")
 def update_group_admins(
-    group_id: UUID, payload: GroupAdminsIn, session: Session = Depends(get_session)
+    group_id: UUID,
+    payload: GroupAdminsIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_superadmin),
 ) -> dict:
     group = session.get(Group, group_id)
     if not group:
@@ -522,7 +861,11 @@ def update_group_admins(
 
 
 @app.delete("/api/groups/{group_id}")
-def delete_group(group_id: UUID, session: Session = Depends(get_session)) -> dict:
+def delete_group(
+    group_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_superadmin),
+) -> dict:
     group = session.get(Group, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
