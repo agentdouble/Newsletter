@@ -400,11 +400,11 @@ def login(payload: LoginIn, session: Session = Depends(get_session)) -> dict:
         select(User).options(selectinload(User.memberships)).where(User.name == name)
     )
     if not user or not user.password_hash:
-        logger.warning("auth_login_failed", extra={"name": name})
+        logger.warning("auth_login_failed", extra={"user_name": name})
         raise HTTPException(status_code=401, detail="INVALID_CREDENTIALS")
 
     if not verify_password(payload.password, user.password_hash):
-        logger.warning("auth_login_failed", extra={"name": name})
+        logger.warning("auth_login_failed", extra={"user_name": name})
         raise HTTPException(status_code=401, detail="INVALID_CREDENTIALS")
 
     token = issue_session(session, user)
