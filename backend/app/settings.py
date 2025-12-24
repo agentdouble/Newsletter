@@ -13,6 +13,8 @@ class Settings:
     env: str
     session_ttl_hours: int
     password_min_length: int
+    openai_api_key: str
+    openai_model: str
 
 
 def normalize_database_url(url: str) -> str:
@@ -37,4 +39,6 @@ def get_settings() -> Settings:
         env=os.getenv("ENV", "development"),
         session_ttl_hours=int(os.getenv("SESSION_TTL_HOURS", "12")),
         password_min_length=int(os.getenv("PASSWORD_MIN_LENGTH", "10")),
+        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
+        openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
     )

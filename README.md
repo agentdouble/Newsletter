@@ -16,7 +16,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 - **Réactions & commentaires** : chaque newsletter peut recevoir des réactions rapides noir & blanc (pictos pouce contour) et des commentaires publiés sous le nom du compte connecté, directement depuis la vue détaillée, avec un compteur sobre. La barre d’engagement est placée sous chaque newsletter.
 - **Collect** : formulaire noir & blanc compact pour saisir trois blocs courts (faits marquants, success story, fail story) sur une seule vue, avec exemples contextualisés aux services d’assurance ; le compte connecté signe automatiquement la contribution (plus de champ nom à renseigner).
 - **Contributions** : vue de suivi `/newsletter/contribution` affichant les contributions de l’édition en cours, le taux de participation (unique) des membres via un donut Chart.js, et la liste nominative des apports.
-- **Générateur** : vue admin qui consomme les contributions (faits marquants / success / fail) et génère un texte complet de newsletter, immédiatement poussé dans le fil, avec une surface d’édition simple en noir et blanc (typographie identique à la lecture). Les actions « Générer un draft » et « Publier dans le fil » sont positionnées sous la zone d’édition pour ne pas masquer le contenu, et les contributions à intégrer sont listées dans la colonne dédiée.
+- **Générateur** : vue admin qui consomme toutes les contributions (faits marquants / success / fail) de l’édition et génère un texte complet de newsletter via IA (OpenAI GPT), immédiatement poussé dans le fil, avec une surface d’édition simple en noir et blanc (typographie identique à la lecture). Les actions « Générer un draft » et « Publier dans le fil » sont positionnées sous la zone d’édition pour ne pas masquer le contenu, et les contributions à intégrer sont listées dans la colonne dédiée.
 - **Admin** : gestion des utilisateurs, rôles (user, admin, super admin) et groupes/équipes, avec création/suppression de groupes, attribution d’un ou plusieurs groupes existants aux utilisateurs et sélection d’admins newsletter, plus un récap des newsletters créées avec les contributeurs rattachés et les admins autorisés à publier, via des onglets « Newsletters & équipes », « Utilisateurs & rôles », « Groupes & droits ». Gestion des comptes : trigrammes (ex : GJV), mot de passe temporaire à la création et reset de mot de passe par utilisateur.
 - Onglets Admin : espacement resserré (y compris avec le header) et indicateur stable (pas de décalage en changeant d’onglet) pour garder une navigation compacte, avec un alignement plus serré entre le header de section, les onglets et les formulaires/boutons d’action pour limiter le blanc inutile.
 
@@ -38,6 +38,8 @@ Copiez `.env.example` (ou `.env.exemple`) vers `.env` et ajustez les valeurs si 
 - `ENV` et `LOG_LEVEL`
 - `SESSION_TTL_HOURS` (durée de validité d’une session, en heures)
 - `PASSWORD_MIN_LENGTH` (longueur minimale des mots de passe)
+- `OPENAI_API_KEY` (clé API OpenAI pour la génération IA)
+- `OPENAI_MODEL` (modèle GPT utilisé, par défaut `gpt-4o-mini`)
 
 Assurez-vous que la base PostgreSQL existe (exemple) :
 
