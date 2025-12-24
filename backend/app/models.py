@@ -25,10 +25,17 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(16), nullable=False, unique=True)
     role = Column(String(16), nullable=False)
+    password_hash = Column(String(256), nullable=True)
+    must_reset_password = Column(Boolean, nullable=False, server_default=text("true"))
+    password_updated_at = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     memberships = relationship(
         "GroupMembership", back_populates="user", cascade="all, delete-orphan"
+    )
+    sessions = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
@@ -70,6 +77,23 @@ class GroupMembership(Base):
 
     user = relationship("User", back_populates="memberships")
     group = relationship("Group", back_populates="memberships")
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    token_hash = Column(String(128), nullable=False, unique=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="sessions")
 
 
 class Edition(Base):

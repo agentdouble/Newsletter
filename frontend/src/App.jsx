@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chart, ArcElement, DoughnutController, Tooltip, Legend } from 'chart.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -40,22 +40,59 @@ const ROLE_LABELS = {
   superadmin: 'Super admin'
 };
 
+const AUTH_STORAGE_KEY = 'anjanews.session';
+const PASSWORD_MIN_LENGTH = 10;
+
+function loadStoredSession() {
+  try {
+    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    console.warn('[auth] failed_to_load_session', error);
+    return null;
+  }
+}
+
+function saveStoredSession(session) {
+  try {
+    sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  } catch (error) {
+    console.warn('[auth] failed_to_save_session', error);
+  }
+}
+
+function clearStoredSession() {
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
 async function apiRequest(path, options = {}) {
-  const headers = { ...(options.headers || {}) };
-  if (options.body && !headers['Content-Type']) {
+  const { token, ...fetchOptions } = options;
+  const headers = { ...(fetchOptions.headers || {}) };
+  if (fetchOptions.body && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers
   });
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+  const payload = isJson ? await response.json().catch(() => null) : null;
   if (!response.ok) {
-    const detail = await response.text().catch(() => '');
+    const detail =
+      payload?.detail || (await response.text().catch(() => ''));
     const message = detail || `Erreur API (${response.status})`;
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    error.detail = detail;
+    throw error;
   }
   if (response.status === 204) return null;
-  return response.json();
+  if (isJson) return payload;
+  return response.text();
 }
 
 function withEngagement(newsletter) {
@@ -79,6 +116,27 @@ function escapeHtml(text) {
 function toTrigram(value) {
   const cleaned = (value || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3);
   return cleaned.toUpperCase();
+}
+
+function normalizeUserName(value) {
+  return (value || '').trim().toUpperCase().slice(0, 16);
+}
+
+function formatAuthError(error) {
+  const detail = error?.detail || error?.message;
+  if (detail === 'INVALID_CREDENTIALS') {
+    return 'Identifiants invalides.';
+  }
+  if (detail === 'PASSWORD_TOO_SHORT') {
+    return `Le mot de passe doit contenir au moins ${PASSWORD_MIN_LENGTH} caractères.`;
+  }
+  if (detail === 'BOOTSTRAP_ALREADY_COMPLETED') {
+    return 'Un compte existe déjà. Connectez-vous.';
+  }
+  if (detail === 'AUTH_REQUIRED') {
+    return 'Session expirée. Merci de vous reconnecter.';
+  }
+  return error?.message || 'Action impossible pour le moment.';
 }
 
 function makeSnippet(value, limit = 220) {
@@ -148,17 +206,38 @@ function buildNewsletterDraft(contributions, label) {
 }
 
 function App() {
-  const [role, setRole] = useState('user');
+  const storedSession = useMemo(() => loadStoredSession(), []);
+  const [authToken, setAuthToken] = useState(storedSession?.token || null);
+  const [currentUser, setCurrentUser] = useState(storedSession?.user || null);
+  const [authStatus, setAuthStatus] = useState(
+    authToken ? 'checking' : 'unauthenticated'
+  );
+  const [authError, setAuthError] = useState('');
+  const [authMode, setAuthMode] = useState('login');
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+  const [loginForm, setLoginForm] = useState({ name: '', password: '' });
+  const [bootstrapForm, setBootstrapForm] = useState({
+    name: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [resetForm, setResetForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [contributions, setContributions] = useState([]);
   const [newsletters, setNewsletters] = useState([]);
   const [users, setUsers] = useState([]);
+  const [resetPasswords, setResetPasswords] = useState({});
   const [groups, setGroups] = useState([]);
   const [currentEdition, setCurrentEdition] = useState(null);
-  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
   const [activeGroupId] = useState('all');
   const location = useLocation();
   const navigate = useNavigate();
+  const role = currentUser?.role || 'user';
 
   useEffect(() => {
     if (location.pathname === '/') {
@@ -166,12 +245,172 @@ function App() {
     }
   }, [location.pathname, navigate]);
 
+  const handleLogout = useCallback(
+    async ({ silent } = {}) => {
+      if (authToken) {
+        try {
+          await apiRequest('/api/auth/logout', {
+            method: 'POST',
+            token: authToken
+          });
+        } catch (error) {
+          if (!silent) {
+            console.warn('[auth] logout_failed', error);
+          }
+        }
+      }
+      clearStoredSession();
+      setAuthToken(null);
+      setCurrentUser(null);
+      setAuthStatus('unauthenticated');
+      setAuthError('');
+      setAuthMode('login');
+      setContributions([]);
+      setNewsletters([]);
+      setUsers([]);
+      setGroups([]);
+      setCurrentEdition(null);
+      setResetPasswords({});
+      setNewsletterDraftHtml('');
+    },
+    [authToken]
+  );
+
+  const request = useCallback(
+    async (path, options = {}) => {
+      try {
+        return await apiRequest(path, { ...options, token: authToken });
+      } catch (error) {
+        if (error.status === 401) {
+          await handleLogout({ silent: true });
+        } else if (
+          error.status === 403 &&
+          error.detail === 'PASSWORD_RESET_REQUIRED'
+        ) {
+          setAuthStatus('must-reset');
+        }
+        throw error;
+      }
+    },
+    [authToken, handleLogout]
+  );
+
+  const handleLogin = useCallback(
+    async ({ name, password }) => {
+      setIsProcessingAuth(true);
+      setAuthError('');
+      try {
+        const data = await apiRequest('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ name, password })
+        });
+        setAuthToken(data.token);
+        setCurrentUser(data.user);
+        setAuthStatus(data.mustReset ? 'must-reset' : 'authenticated');
+        saveStoredSession({ token: data.token, user: data.user });
+        console.info('[auth] login_success', { userId: data.user?.id });
+      } catch (error) {
+        setAuthError(formatAuthError(error));
+        console.error('[auth] login_failed', error);
+      } finally {
+        setIsProcessingAuth(false);
+      }
+    },
+    []
+  );
+
+  const handleBootstrap = useCallback(
+    async ({ name, password }) => {
+      setIsProcessingAuth(true);
+      setAuthError('');
+      try {
+        const data = await apiRequest('/api/auth/bootstrap', {
+          method: 'POST',
+          body: JSON.stringify({ name, password })
+        });
+        setAuthToken(data.token);
+        setCurrentUser(data.user);
+        setAuthStatus('authenticated');
+        saveStoredSession({ token: data.token, user: data.user });
+        console.info('[auth] bootstrap_success', { userId: data.user?.id });
+      } catch (error) {
+        setAuthError(formatAuthError(error));
+        console.error('[auth] bootstrap_failed', error);
+      } finally {
+        setIsProcessingAuth(false);
+      }
+    },
+    []
+  );
+
+  const handlePasswordChange = useCallback(
+    async ({ currentPassword, newPassword }) => {
+      setIsProcessingAuth(true);
+      setAuthError('');
+      try {
+        const data = await request('/api/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        setCurrentUser(data.user);
+        setAuthStatus('authenticated');
+        saveStoredSession({ token: authToken, user: data.user });
+        console.info('[auth] password_changed', { userId: data.user?.id });
+      } catch (error) {
+        setAuthError(formatAuthError(error));
+        console.error('[auth] password_change_failed', error);
+      } finally {
+        setIsProcessingAuth(false);
+      }
+    },
+    [authToken, request]
+  );
+
   useEffect(() => {
+    if (!authToken) {
+      setAuthStatus('unauthenticated');
+      setCurrentUser(null);
+      return;
+    }
+    if (authStatus === 'authenticated' || authStatus === 'must-reset') {
+      return;
+    }
     const controller = new AbortController();
+    const loadSession = async () => {
+      try {
+        const data = await apiRequest('/api/auth/me', {
+          token: authToken,
+          signal: controller.signal
+        });
+        if (controller.signal.aborted) return;
+        setCurrentUser(data.user);
+        setAuthStatus(data.mustReset ? 'must-reset' : 'authenticated');
+        setAuthError('');
+        saveStoredSession({ token: authToken, user: data.user });
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('[auth] session_failed', error);
+        }
+        handleLogout({ silent: true });
+      }
+    };
+
+    loadSession();
+
+    return () => controller.abort();
+  }, [authStatus, authToken, handleLogout]);
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated') {
+      setIsBootstrapping(false);
+      return;
+    }
+    const controller = new AbortController();
+    setIsBootstrapping(true);
 
     const loadBootstrap = async () => {
       try {
-        const data = await apiRequest('/api/bootstrap', {
+        const data = await request('/api/bootstrap', {
           signal: controller.signal
         });
         if (controller.signal.aborted) return;
@@ -194,7 +433,7 @@ function App() {
     loadBootstrap();
 
     return () => controller.abort();
-  }, []);
+  }, [authStatus, request]);
 
   const currentNewsletterLabel = useMemo(() => {
     if (currentEdition?.label) return currentEdition.label;
@@ -227,8 +466,8 @@ function App() {
   );
 
   const commentAuthor = activeGroup
-    ? `${ROLE_LABELS[role]} · ${activeGroup.name}`
-    : ROLE_LABELS[role];
+    ? `${currentUser?.name || ROLE_LABELS[role]} · ${activeGroup.name}`
+    : currentUser?.name || ROLE_LABELS[role];
 
   const selectedNewsletterId = useMemo(() => {
     if (currentTabId !== 'feed') return null;
@@ -239,28 +478,17 @@ function App() {
     return last || null;
   }, [location.pathname, currentTabId]);
 
-  const handleRoleChange = (event) => {
-    const nextRole = event.target.value;
-    console.info('[auth] role_changed', { from: role, to: nextRole });
-    setRole(nextRole);
-    const allowedTabs = TABS.filter((t) => t.roles.includes(nextRole));
-    if (!allowedTabs.find((t) => t.id === currentTabId)) {
-      navigate(TAB_ROUTES.feed);
-    }
-  };
-
   const handleCreateContribution = async (payload) => {
     if (!currentEditionId) return;
     const requestBody = {
       editionId: currentEditionId,
       groupId: activeGroupId === 'all' ? null : activeGroupId,
-      author: payload.author || 'Anonyme',
       text: payload.text || '',
       successStory: payload.successStory || '',
       failStory: payload.failStory || ''
     };
     try {
-      const entry = await apiRequest('/api/contributions', {
+      const entry = await request('/api/contributions', {
         method: 'POST',
         body: JSON.stringify(requestBody)
       });
@@ -305,7 +533,7 @@ function App() {
     };
 
     try {
-      const article = await apiRequest('/api/newsletters', {
+      const article = await request('/api/newsletters', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
@@ -325,7 +553,7 @@ function App() {
       return;
     }
     try {
-      const data = await apiRequest(`/api/newsletters/${newsletterId}/reactions`, {
+      const data = await request(`/api/newsletters/${newsletterId}/reactions`, {
         method: 'POST',
         body: JSON.stringify({ reactionId })
       });
@@ -349,13 +577,10 @@ function App() {
     const trimmed = (body || '').trim();
     if (!trimmed) return;
     try {
-      const entry = await apiRequest(
-        `/api/newsletters/${newsletterId}/comments`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ author: commentAuthor, body: trimmed })
-        }
-      );
+      const entry = await request(`/api/newsletters/${newsletterId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ body: trimmed })
+      });
       console.info('[feed] comment_added', {
         id: newsletterId,
         author: commentAuthor
@@ -382,7 +607,7 @@ function App() {
       editionId: currentEditionId
     };
     try {
-      const entry = await apiRequest('/api/newsletters', {
+      const entry = await request('/api/newsletters', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
@@ -398,14 +623,15 @@ function App() {
 
   const handleAddUser = async (user) => {
     const trigram = toTrigram(user.name);
-    if (!trigram) return;
+    if (!trigram || !user.temporaryPassword) return;
     try {
-      const entry = await apiRequest('/api/users', {
+      const entry = await request('/api/users', {
         method: 'POST',
         body: JSON.stringify({
           name: trigram,
           role: user.role,
-          groupIds: user.groupIds || []
+          groupIds: user.groupIds || [],
+          temporaryPassword: user.temporaryPassword
         })
       });
       console.info('[admin] user_added', entry);
@@ -415,13 +641,29 @@ function App() {
     }
   };
 
-  const handleResetUserPassword = (userId) => {
-    console.info('[admin] user_password_reset', { userId });
+  const handleResetUserPassword = async (userId) => {
+    try {
+      const data = await request(`/api/users/${userId}/reset-password`, {
+        method: 'POST'
+      });
+      console.info('[admin] user_password_reset', { userId });
+      setResetPasswords((prev) => ({
+        ...prev,
+        [userId]: data.temporaryPassword
+      }));
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === userId ? { ...user, mustReset: data.mustReset } : user
+        )
+      );
+    } catch (error) {
+      console.error('[admin] user_password_reset_failed', error);
+    }
   };
 
   const handleUpdateUserGroups = async (userId, groupIds) => {
     try {
-      const entry = await apiRequest(`/api/users/${userId}/groups`, {
+      const entry = await request(`/api/users/${userId}/groups`, {
         method: 'PUT',
         body: JSON.stringify({ groupIds })
       });
@@ -436,7 +678,7 @@ function App() {
 
   const handleUpdateGroupAdmins = async (groupId, adminIds) => {
     try {
-      const entry = await apiRequest(`/api/groups/${groupId}/admins`, {
+      const entry = await request(`/api/groups/${groupId}/admins`, {
         method: 'PUT',
         body: JSON.stringify({ adminIds })
       });
@@ -461,7 +703,7 @@ function App() {
     const trimmed = (name || '').trim();
     if (!trimmed) return;
     try {
-      const entry = await apiRequest('/api/groups', {
+      const entry = await request('/api/groups', {
         method: 'POST',
         body: JSON.stringify({ name: trimmed })
       });
@@ -474,7 +716,7 @@ function App() {
 
   const handleDeleteGroup = async (groupId) => {
     try {
-      await apiRequest(`/api/groups/${groupId}`, { method: 'DELETE' });
+      await request(`/api/groups/${groupId}`, { method: 'DELETE' });
       console.info('[admin] group_deleted', { groupId });
       setGroups((prev) => prev.filter((g) => g.id !== groupId));
       setUsers((prev) =>
@@ -503,6 +745,270 @@ function App() {
   const currentTab =
     visibleTabs.find((tab) => tab.id === currentTabId) || visibleTabs[0];
 
+  const loginDisabled =
+    isProcessingAuth ||
+    !loginForm.name.trim() ||
+    !loginForm.password.trim();
+  const bootstrapMismatch =
+    bootstrapForm.password &&
+    bootstrapForm.confirmPassword &&
+    bootstrapForm.password !== bootstrapForm.confirmPassword;
+  const bootstrapDisabled =
+    isProcessingAuth ||
+    !bootstrapForm.name.trim() ||
+    bootstrapForm.password.length < PASSWORD_MIN_LENGTH ||
+    bootstrapMismatch;
+  const resetMismatch =
+    resetForm.newPassword &&
+    resetForm.confirmPassword &&
+    resetForm.newPassword !== resetForm.confirmPassword;
+  const resetDisabled =
+    isProcessingAuth ||
+    !resetForm.currentPassword ||
+    resetForm.newPassword.length < PASSWORD_MIN_LENGTH ||
+    resetMismatch;
+
+  if (authStatus !== 'authenticated') {
+    const isChecking = authStatus === 'checking';
+    const isReset = authStatus === 'must-reset';
+    const isBootstrap = authMode === 'bootstrap';
+    const title = isReset
+      ? 'Changer le mot de passe'
+      : isBootstrap
+        ? 'Créer le super admin'
+        : 'Connexion';
+    const subtitle = isReset
+      ? 'Votre mot de passe temporaire doit être remplacé dès la première connexion.'
+      : isBootstrap
+        ? 'Initialisez le premier compte super admin avant de continuer.'
+        : 'Connectez-vous avec les identifiants fournis par l’administrateur.';
+
+    return (
+      <div className="auth-shell">
+        <div className="auth-card">
+          <div className="logo-pill">
+            <span className="logo-dot" />
+            <span className="logo-text">Anjanews</span>
+          </div>
+          <h1 className="auth-title">{title}</h1>
+          <p className="auth-subtitle">{subtitle}</p>
+          {authError && <p className="auth-error">{authError}</p>}
+          {isChecking ? (
+            <p className="auth-loading">Vérification de la session…</p>
+          ) : isReset ? (
+            <form
+              className="form-grid"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (resetDisabled) return;
+                if (resetMismatch) {
+                  setAuthError('Les mots de passe ne correspondent pas.');
+                  return;
+                }
+                handlePasswordChange({
+                  currentPassword: resetForm.currentPassword,
+                  newPassword: resetForm.newPassword
+                });
+                setResetForm({
+                  currentPassword: '',
+                  newPassword: '',
+                  confirmPassword: ''
+                });
+              }}
+            >
+              <label className="field field--full">
+                <span className="field-label">Mot de passe temporaire</span>
+                <input
+                  type="password"
+                  value={resetForm.currentPassword}
+                  onChange={(event) =>
+                    setResetForm((prev) => ({
+                      ...prev,
+                      currentPassword: event.target.value
+                    }))
+                  }
+                  autoComplete="current-password"
+                />
+              </label>
+              <label className="field field--full">
+                <span className="field-label">
+                  Nouveau mot de passe (min. {PASSWORD_MIN_LENGTH} caractères)
+                </span>
+                <input
+                  type="password"
+                  value={resetForm.newPassword}
+                  onChange={(event) =>
+                    setResetForm((prev) => ({
+                      ...prev,
+                      newPassword: event.target.value
+                    }))
+                  }
+                  autoComplete="new-password"
+                />
+              </label>
+              <label className="field field--full">
+                <span className="field-label">Confirmer le nouveau mot de passe</span>
+                <input
+                  type="password"
+                  value={resetForm.confirmPassword}
+                  onChange={(event) =>
+                    setResetForm((prev) => ({
+                      ...prev,
+                      confirmPassword: event.target.value
+                    }))
+                  }
+                  autoComplete="new-password"
+                />
+              </label>
+              {resetMismatch && (
+                <p className="auth-helper">Les mots de passe ne correspondent pas.</p>
+              )}
+              <div className="form-actions form-actions--right">
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={resetDisabled}
+                >
+                  Mettre à jour
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => handleLogout({})}
+                >
+                  Se déconnecter
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form
+              className="form-grid"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (isBootstrap) {
+                  if (bootstrapDisabled) return;
+                  if (bootstrapMismatch) {
+                    setAuthError('Les mots de passe ne correspondent pas.');
+                    return;
+                  }
+                  handleBootstrap({
+                    name: bootstrapForm.name,
+                    password: bootstrapForm.password
+                  });
+                  setBootstrapForm({
+                    name: '',
+                    password: '',
+                    confirmPassword: ''
+                  });
+                } else {
+                  if (loginDisabled) return;
+                  handleLogin({
+                    name: loginForm.name,
+                    password: loginForm.password
+                  });
+                  setLoginForm((prev) => ({ ...prev, password: '' }));
+                }
+              }}
+            >
+              <label className="field field--full">
+                <span className="field-label">
+                  {isBootstrap ? 'Nom du super admin' : 'Identifiant'}
+                </span>
+                <input
+                  type="text"
+                  value={isBootstrap ? bootstrapForm.name : loginForm.name}
+                  onChange={(event) => {
+                    const nextValue = normalizeUserName(event.target.value);
+                    if (isBootstrap) {
+                      setBootstrapForm((prev) => ({ ...prev, name: nextValue }));
+                    } else {
+                      setLoginForm((prev) => ({ ...prev, name: nextValue }));
+                    }
+                  }}
+                  autoComplete="username"
+                  placeholder="Trigramme ou nom court"
+                />
+              </label>
+              <label className="field field--full">
+                <span className="field-label">
+                  Mot de passe
+                  {isBootstrap ? ` (min. ${PASSWORD_MIN_LENGTH} caractères)` : ''}
+                </span>
+                <input
+                  type="password"
+                  value={isBootstrap ? bootstrapForm.password : loginForm.password}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    if (isBootstrap) {
+                      setBootstrapForm((prev) => ({
+                        ...prev,
+                        password: nextValue
+                      }));
+                    } else {
+                      setLoginForm((prev) => ({
+                        ...prev,
+                        password: nextValue
+                      }));
+                    }
+                  }}
+                  autoComplete={isBootstrap ? 'new-password' : 'current-password'}
+                />
+              </label>
+              {isBootstrap && (
+                <>
+                  <label className="field field--full">
+                    <span className="field-label">Confirmer le mot de passe</span>
+                    <input
+                      type="password"
+                      value={bootstrapForm.confirmPassword}
+                      onChange={(event) =>
+                        setBootstrapForm((prev) => ({
+                          ...prev,
+                          confirmPassword: event.target.value
+                        }))
+                      }
+                      autoComplete="new-password"
+                    />
+                  </label>
+                  {bootstrapMismatch && (
+                    <p className="auth-helper">
+                      Les mots de passe ne correspondent pas.
+                    </p>
+                  )}
+                </>
+              )}
+              <div className="form-actions form-actions--right">
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={isBootstrap ? bootstrapDisabled : loginDisabled}
+                >
+                  {isBootstrap ? 'Créer le compte' : 'Se connecter'}
+                </button>
+              </div>
+            </form>
+          )}
+          {!isReset && !isChecking && (
+            <div className="auth-footer">
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setAuthMode(isBootstrap ? 'login' : 'bootstrap');
+                  setAuthError('');
+                }}
+              >
+                {isBootstrap
+                  ? 'Retour à la connexion'
+                  : 'Créer le super admin initial'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -530,19 +1036,16 @@ function App() {
                 </button>
               ))}
             </nav>
-            <div className="role-switch">
-              <span className="role-label">Rôle</span>
-              <select
-                className="role-select"
-                value={role}
-                onChange={handleRoleChange}
+            <div className="user-chip">
+              <span className="user-name">{currentUser?.name}</span>
+              <span className="tag tag--soft">{ROLE_LABELS[role]}</span>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => handleLogout({})}
               >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABELS[r]}
-                  </option>
-                ))}
-              </select>
+                Déconnexion
+              </button>
             </div>
           </div>
         </div>
@@ -567,6 +1070,7 @@ function App() {
             targetLabel={currentNewsletterLabel}
             onCreate={handleCreateContribution}
             isReady={!isBootstrapping && Boolean(currentEditionId)}
+            authorLabel={currentUser?.name || 'Utilisateur connecté'}
           />
         )}
         {currentTab.id === 'contributions' && (
@@ -590,6 +1094,8 @@ function App() {
             newsletters={newsletters}
             users={users}
             groups={groups}
+            resetPasswords={resetPasswords}
+            passwordMinLength={PASSWORD_MIN_LENGTH}
             defaultNewsletterTitle={currentNewsletterLabel}
             onAddUser={handleAddUser}
             onResetUserPassword={handleResetUserPassword}
@@ -883,7 +1389,7 @@ function FeedTab({
   );
 }
 
-function CollectTab({ onCreate, targetLabel, isReady }) {
+function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
   const [text, setText] = useState('');
   const [successStory, setSuccessStory] = useState('');
   const [failStory, setFailStory] = useState('');
@@ -899,8 +1405,7 @@ function CollectTab({ onCreate, targetLabel, isReady }) {
       newsletterLabel: targetLabel,
       text: main,
       successStory: success,
-      failStory: fail,
-      author: 'Utilisateur connecté'
+      failStory: fail
     });
     setText('');
     setSuccessStory('');
@@ -916,8 +1421,8 @@ function CollectTab({ onCreate, targetLabel, isReady }) {
         <h2>Partager les nouveautés du mois</h2>
         <p className="panel-subtitle">
           Trois blocs pour consigner les faits marquants, une success story et
-          une fail story utiles aux autres équipes. Votre compte connecté signe
-          automatiquement la contribution.
+          une fail story utiles aux autres équipes. Votre compte connecté (
+          {authorLabel || 'utilisateur'}) signe automatiquement la contribution.
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
@@ -1252,6 +1757,8 @@ function AdminTab({
   newsletters,
   users,
   groups,
+  resetPasswords,
+  passwordMinLength,
   defaultNewsletterTitle,
   onAddUser,
   onResetUserPassword,
@@ -1264,7 +1771,8 @@ function AdminTab({
   const [form, setForm] = useState({
     name: '',
     role: 'user',
-    groupIds: []
+    groupIds: [],
+    temporaryPassword: ''
   });
   const [newGroupName, setNewGroupName] = useState('');
   const [newNewsletter, setNewNewsletter] = useState({
@@ -1296,16 +1804,23 @@ function AdminTab({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!form.name.trim()) return;
+    if (
+      !form.name.trim() ||
+      form.temporaryPassword.length < passwordMinLength
+    ) {
+      return;
+    }
     onAddUser({
       name: form.name,
       role: form.role,
-      groupIds: form.groupIds
+      groupIds: form.groupIds,
+      temporaryPassword: form.temporaryPassword
     });
     setForm({
       name: '',
       role: 'user',
-      groupIds: []
+      groupIds: [],
+      temporaryPassword: ''
     });
   };
 
@@ -1482,7 +1997,7 @@ function AdminTab({
           <header className="panel-header">
             <h2>Utilisateurs & rôles</h2>
             <p className="panel-subtitle">
-              Gestion simple, en mémoire, des rôles principaux.
+              Gestion des comptes, rôles et mots de passe temporaires.
             </p>
           </header>
           <div className="panel-body panel-body--list">
@@ -1508,6 +2023,9 @@ function AdminTab({
                         return user.group || 'Aucun groupe';
                       })()}
                     </p>
+                    {user.mustReset && (
+                      <span className="tag tag--soft">Mdp à changer</span>
+                    )}
                   </div>
                 </div>
                 <div className="user-side">
@@ -1518,6 +2036,14 @@ function AdminTab({
                   >
                     Reset mdp
                   </button>
+                  {resetPasswords?.[user.id] && (
+                    <div className="user-reset-note">
+                      <span className="tag tag--soft">Mdp temporaire</span>
+                      <span className="user-reset-value">
+                        {resetPasswords[user.id]}
+                      </span>
+                    </div>
+                  )}
                   <details className="user-groups-dropdown">
                     <summary>Groupes</summary>
                     <div className="user-groups-list">
@@ -1569,6 +2095,18 @@ function AdminTab({
               </select>
             </label>
             <label className="field">
+              <span className="field-label">
+                Mot de passe temporaire (min. {passwordMinLength})
+              </span>
+              <input
+                name="temporaryPassword"
+                type="password"
+                value={form.temporaryPassword}
+                onChange={handleChange}
+                placeholder="Mot de passe initial"
+              />
+            </label>
+            <label className="field">
               <span className="field-label">Groupes</span>
               <select
                 name="groupIds"
@@ -1587,7 +2125,10 @@ function AdminTab({
               <button
                 type="submit"
                 className="primary-button"
-                disabled={!form.name.trim()}
+                disabled={
+                  !form.name.trim() ||
+                  form.temporaryPassword.length < passwordMinLength
+                }
               >
                 Ajouter
               </button>
