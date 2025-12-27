@@ -12,6 +12,7 @@ from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from openai import OpenAI
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -72,6 +73,10 @@ class NewsletterIn(BaseModel):
     imageUrl: Optional[str] = None
     groupId: Optional[UUID] = None
     editionId: Optional[UUID] = None
+
+
+class NewsletterGenerateIn(BaseModel):
+    editionId: UUID
 
 
 class ReactionIn(BaseModel):
@@ -352,6 +357,32 @@ def serialize_contribution(contribution: Contribution) -> dict:
     }
 
 
+def format_contribution_for_prompt(contribution: Contribution) -> str:
+    details = []
+    if contribution.text:
+        details.append(f"Faits marquants: {contribution.text.strip()}")
+    if contribution.success_story:
+        details.append(f"Success story: {contribution.success_story.strip()}")
+    if contribution.fail_story:
+        details.append(f"Fail story: {contribution.fail_story.strip()}")
+    if not details:
+        return ""
+    group_label = contribution.group.name if contribution.group else "Sans groupe"
+    author = contribution.author or "Anonyme"
+    return f"- {author} ({group_label}) : " + " | ".join(details)
+
+
+def build_newsletter_prompt(label: str, contributions: list[Contribution]) -> str:
+    lines = [
+        format_contribution_for_prompt(contribution)
+        for contribution in contributions
+    ]
+    cleaned = [line for line in lines if line]
+    if not cleaned:
+        return ""
+    return f"Titre: {label}\nContributions:\n" + "\n".join(cleaned)
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -559,6 +590,75 @@ def create_contribution(
 
     entry.edition = edition
     return serialize_contribution(entry)
+
+
+@app.post("/api/newsletters/generate")
+def generate_newsletter(
+    payload: NewsletterGenerateIn,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_admin),
+) -> dict:
+    if not settings.openai_api_key:
+        raise HTTPException(status_code=503, detail="OPENAI_NOT_CONFIGURED")
+
+    edition = session.get(Edition, payload.editionId)
+    if not edition:
+        raise HTTPException(status_code=404, detail="Edition not found")
+
+    contributions = session.scalars(
+        select(Contribution)
+        .options(selectinload(Contribution.group))
+        .where(Contribution.edition_id == edition.id)
+        .order_by(Contribution.created_at.desc())
+    ).all()
+
+    prompt = build_newsletter_prompt(edition.label, contributions)
+    if not prompt:
+        raise HTTPException(status_code=400, detail="NO_CONTRIBUTIONS")
+
+    client = OpenAI(api_key=settings.openai_api_key, timeout=30.0)
+    system_message = (
+        "Tu es un redacteur de newsletter interne. "
+        "Rends uniquement du HTML (pas de markdown), avec des titres h1/h2, "
+        "des paragraphes courts et des listes a puces quand utile. "
+        "Ecris en francais, style clair et professionnel. "
+        "Ne fabrique aucune information, synthese uniquement a partir des contributions."
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.4,
+        )
+    except Exception as error:
+        logger.exception(
+            "newsletter_ai_failed",
+            extra={"edition_id": str(edition.id), "model": settings.openai_model},
+        )
+        raise HTTPException(status_code=502, detail="OPENAI_REQUEST_FAILED") from error
+
+    content = (completion.choices[0].message.content or "").strip()
+    if not content:
+        logger.error(
+            "newsletter_ai_empty",
+            extra={"edition_id": str(edition.id), "model": settings.openai_model},
+        )
+        raise HTTPException(status_code=502, detail="OPENAI_EMPTY_RESPONSE")
+
+    logger.info(
+        "newsletter_ai_generated",
+        extra={
+            "edition_id": str(edition.id),
+            "contributions": len(contributions),
+            "model": settings.openai_model,
+        },
+    )
+
+    return {"html": content}
 
 
 @app.post("/api/newsletters", status_code=status.HTTP_201_CREATED)

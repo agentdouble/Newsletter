@@ -234,6 +234,8 @@ function App() {
   const [currentEdition, setCurrentEdition] = useState(null);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
+  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+  const [generatorError, setGeneratorError] = useState('');
   const [activeGroupId] = useState('all');
   const location = useLocation();
   const navigate = useNavigate();
@@ -272,6 +274,8 @@ function App() {
       setCurrentEdition(null);
       setResetPasswords({});
       setNewsletterDraftHtml('');
+      setIsGeneratingDraft(false);
+      setGeneratorError('');
     },
     [authToken]
   );
@@ -499,26 +503,58 @@ function App() {
     }
   };
 
-  const visibleGeneratorContributions = useMemo(
-    () =>
-      contributions.filter(
-        (c) =>
-          c.newsletterLabel === currentNewsletterLabel &&
-          (activeGroupId === 'all' || c.groupId === activeGroupId)
-      ),
-    [contributions, currentNewsletterLabel, activeGroupId]
-  );
+  const generatorContributions = contributions;
 
-  const handleGenerateDraft = () => {
-    const draft = buildNewsletterDraft(
-      visibleGeneratorContributions,
-      currentNewsletterLabel
-    );
-    console.info('[generator] newsletter_draft_generated', {
-      contributions: visibleGeneratorContributions.length,
-      groupId: activeGroupId
-    });
-    setNewsletterDraftHtml(draft);
+  const handleGenerateDraft = async () => {
+    if (isGeneratingDraft || !generatorContributions.length) return;
+    setIsGeneratingDraft(true);
+    setGeneratorError('');
+
+    if (!currentEditionId) {
+      const draft = buildNewsletterDraft(
+        generatorContributions,
+        currentNewsletterLabel
+      );
+      setNewsletterDraftHtml(draft);
+      console.info('[generator] newsletter_draft_generated', {
+        contributions: generatorContributions.length,
+        source: 'fallback'
+      });
+      setIsGeneratingDraft(false);
+      return;
+    }
+
+    try {
+      const data = await request('/api/newsletters/generate', {
+        method: 'POST',
+        body: JSON.stringify({ editionId: currentEditionId })
+      });
+      const html = (data?.html || '').trim();
+      if (!html) {
+        throw new Error('EMPTY_DRAFT');
+      }
+      setNewsletterDraftHtml(html);
+      console.info('[generator] newsletter_draft_generated', {
+        contributions: generatorContributions.length,
+        source: 'ai'
+      });
+    } catch (error) {
+      console.error('[generator] ai_generate_failed', error);
+      const draft = buildNewsletterDraft(
+        generatorContributions,
+        currentNewsletterLabel
+      );
+      setNewsletterDraftHtml(draft);
+      setGeneratorError(
+        'Génération IA indisponible. Brouillon automatique appliqué.'
+      );
+      console.info('[generator] newsletter_draft_generated', {
+        contributions: generatorContributions.length,
+        source: 'fallback'
+      });
+    } finally {
+      setIsGeneratingDraft(false);
+    }
   };
 
   const handlePublishDraft = async (html, imageUrl) => {
@@ -1082,11 +1118,13 @@ function App() {
         )}
         {currentTab.id === 'generator' && (
           <GeneratorTab
-            contributions={visibleGeneratorContributions}
+            contributions={generatorContributions}
             targetLabel={currentNewsletterLabel}
             draftHtml={newsletterDraftHtml}
             onGenerate={handleGenerateDraft}
             onPublish={handlePublishDraft}
+            isGenerating={isGeneratingDraft}
+            generatorError={generatorError}
           />
         )}
         {currentTab.id === 'admin' && (
@@ -1391,38 +1429,26 @@ function FeedTab({
 
 function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
   const [text, setText] = useState('');
-  const [successStory, setSuccessStory] = useState('');
-  const [failStory, setFailStory] = useState('');
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!isReady) return;
     const main = text.trim();
-    const success = successStory.trim();
-    const fail = failStory.trim();
-    if (!main && !success && !fail) return;
-    onCreate({
-      newsletterLabel: targetLabel,
-      text: main,
-      successStory: success,
-      failStory: fail
-    });
+    if (!main) return;
+    onCreate({ newsletterLabel: targetLabel, text: main });
     setText('');
-    setSuccessStory('');
-    setFailStory('');
   };
 
-  const isSubmitDisabled =
-    !isReady || (!text.trim() && !successStory.trim() && !failStory.trim());
+  const isSubmitDisabled = !isReady || !text.trim();
 
   return (
     <section className="panel-card panel-card--wide">
       <header className="panel-header">
         <h2>Partager les nouveautés du mois</h2>
         <p className="panel-subtitle">
-          Trois blocs pour consigner les faits marquants, une success story et
-          une fail story utiles aux autres équipes. Votre compte connecté (
-          {authorLabel || 'utilisateur'}) signe automatiquement la contribution.
+          Un seul bloc pour consigner les faits marquants utiles aux autres
+          équipes. Votre compte connecté ({authorLabel || 'utilisateur'}) signe
+          automatiquement la contribution.
         </p>
       </header>
       <form className="form-grid" onSubmit={handleSubmit}>
@@ -1435,32 +1461,10 @@ function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
           <span className="field-label">Nouveautés du mois</span>
           <textarea
             className="notepad-textarea"
-            rows={4}
+            rows={5}
             value={text}
             onChange={(event) => setText(event.target.value)}
             placeholder="Résumez les faits marquants côté assurance : lancement d’un parcours indemnisation, nouvelle offre auto/habitation, amélioration service clients, etc."
-          />
-        </label>
-
-        <label className="field field--full">
-          <span className="field-label">Success story</span>
-          <textarea
-            className="notepad-textarea"
-            rows={3}
-            value={successStory}
-            onChange={(event) => setSuccessStory(event.target.value)}
-            placeholder="Exemple : réduction du délai de prise en charge sinistre, hausse du NPS après refonte espace assuré, automatisation d’une étape de souscription."
-          />
-        </label>
-
-        <label className="field field--full">
-          <span className="field-label">Fail story</span>
-          <textarea
-            className="notepad-textarea"
-            rows={3}
-            value={failStory}
-            onChange={(event) => setFailStory(event.target.value)}
-            placeholder="Exemple : incident sur la déclaration de sinistre en ligne, campagne emailing mal ciblée, expérimentation de tarification non concluante."
           />
         </label>
 
@@ -1637,7 +1641,9 @@ function GeneratorTab({
   targetLabel,
   draftHtml,
   onGenerate,
-  onPublish
+  onPublish,
+  isGenerating,
+  generatorError
 }) {
   const hasContributions = contributions.length > 0;
   const editorRef = useRef(null);
@@ -1657,7 +1663,8 @@ function GeneratorTab({
         <header className="panel-header">
           <h2>Contributions à intégrer</h2>
           <p className="panel-subtitle">
-            Faits marquants saisis pour l’édition en cours.
+            Faits marquants saisis pour l’édition en cours, toutes équipes
+            confondues.
           </p>
         </header>
         <div className="panel-body panel-body--list">
@@ -1734,19 +1741,22 @@ function GeneratorTab({
               type="button"
               className="primary-button"
               onClick={onGenerate}
-              disabled={!hasContributions}
+              disabled={!hasContributions || isGenerating}
             >
-              Générer un draft
+              {isGenerating ? 'Génération…' : 'Générer un draft'}
             </button>
             <button
               type="button"
               className="primary-button"
               onClick={handlePublishClick}
-              disabled={!draftHtml}
+              disabled={!draftHtml || isGenerating}
             >
               Publier dans le fil
             </button>
           </div>
+          {generatorError ? (
+            <p className="panel-subtitle">{generatorError}</p>
+          ) : null}
         </div>
       </article>
     </section>
