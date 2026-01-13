@@ -42,8 +42,6 @@ const ROLE_LABELS = {
 
 const AUTH_STORAGE_KEY = 'anjanews.session';
 const PASSWORD_MIN_LENGTH = 10;
-const IMMUTABLE_SYSTEM_PROMPT =
-  'Rends uniquement du HTML (pas de markdown), avec un h1 puis des h2 si besoin.';
 const DEFAULT_SYSTEM_PROMPT =
   'Tu es un redacteur de newsletter interne. Ecris un article fluide et narratif, pas une liste de faits. Evite les listes a puces sauf si strictement necessaire. Ecris en francais, style clair et professionnel. Ne fabrique aucune information, synthese uniquement a partir des contributions.';
 
@@ -2280,13 +2278,6 @@ function AdminTab({
           <div className="panel-body">
             <div className="form-grid form-grid--compact">
               <label className="field field--full">
-                <span className="field-label">Prompt systeme fixe</span>
-                <textarea value={IMMUTABLE_SYSTEM_PROMPT} readOnly rows={2} />
-                <span className="helper-text">
-                  Applique automatiquement en fin de prompt, non modifiable.
-                </span>
-              </label>
-              <label className="field field--full">
                 <span className="field-label">Instructions additionnelles</span>
                 <textarea
                   value={systemPrompt}
@@ -2295,7 +2286,8 @@ function AdminTab({
                   placeholder="Instructions pour la generation IA"
                 />
                 <span className="helper-text">
-                  Laisse vide pour utiliser le prompt par defaut.
+                  Laisse vide pour utiliser le prompt par defaut. Le format HTML
+                  est impose automatiquement.
                 </span>
               </label>
             </div>
