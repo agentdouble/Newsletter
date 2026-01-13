@@ -4,8 +4,9 @@ from .models import Contribution
 
 SYSTEM_MESSAGE = (
     "Tu es un redacteur de newsletter interne. "
-    "Rends uniquement du HTML (pas de markdown), avec des titres h1/h2, "
-    "des paragraphes courts et des listes a puces quand utile. "
+    "Rends uniquement du HTML (pas de markdown), avec un h1 puis des h2 si besoin. "
+    "Ecris un article fluide et narratif, pas une liste de faits. "
+    "Evite les listes a puces sauf si strictement necessaire. "
     "Ecris en francais, style clair et professionnel. "
     "Ne fabrique aucune information, synthese uniquement a partir des contributions."
 )
@@ -23,7 +24,7 @@ def format_contribution_for_prompt(contribution: Contribution) -> str:
         return ""
     group_label = contribution.group.name if contribution.group else "Sans groupe"
     author = contribution.author or "Anonyme"
-    return f"- {author} ({group_label}) : " + " | ".join(details)
+    return f"Contribution - {author} ({group_label}) : " + " | ".join(details)
 
 
 def build_newsletter_prompt(label: str, contributions: list[Contribution]) -> str:
