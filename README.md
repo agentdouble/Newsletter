@@ -75,6 +75,7 @@ Utilisez toujours le script de lancement :
 ## Notes d’architecture
 
 - Backend FastAPI, schéma SQLAlchemy, migrations Alembic, API exposée sous `/api`.
+- Backend modulaire : `backend/app/main.py` pour le wiring, `backend/app/api/*.py` pour les routes, `backend/app/security.py` pour auth/sessions, `backend/app/schemas.py` + `backend/app/serializers.py` pour les I/O, `backend/app/newsletter_prompt.py` pour le prompt IA.
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
 - Authentification par session (token côté frontend dans `sessionStorage`), mots de passe hashés côté backend et obligation de reset après un mot de passe temporaire.
