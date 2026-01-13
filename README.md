@@ -16,7 +16,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 - **Réactions & commentaires** : chaque newsletter peut recevoir des réactions rapides noir & blanc (pictos pouce contour) et des commentaires publiés sous le nom du compte connecté, directement depuis la vue détaillée, avec un compteur sobre. La barre d’engagement est placée sous chaque newsletter.
 - **Collect** : formulaire noir & blanc compact avec un seul bloc de saisie des faits marquants sur une seule vue, avec exemples contextualisés aux services d’assurance ; le compte connecté signe automatiquement la contribution (plus de champ nom à renseigner).
 - **Contributions** : vue de suivi `/newsletter/contribution` affichant les contributions de l’édition en cours, le taux de participation (unique) des membres via un donut Chart.js, et la liste nominative des apports.
-- **Générateur** : vue admin qui consomme toutes les contributions (faits marquants / success / fail) de l’édition et génère un texte complet de newsletter via IA (OpenAI GPT), immédiatement poussé dans le fil, avec une surface d’édition simple en noir et blanc (typographie identique à la lecture). Les actions « Générer un draft » et « Publier dans le fil » sont positionnées sous la zone d’édition pour ne pas masquer le contenu, et les contributions à intégrer sont listées dans la colonne dédiée.
+- **Générateur** : vue admin qui consomme toutes les contributions (faits marquants / success / fail) de l’édition et génère un article de newsletter via IA (OpenAI GPT), immédiatement poussé dans le fil, avec une surface d’édition simple en noir et blanc (typographie identique à la lecture). Les actions « Générer un draft » et « Publier dans le fil » sont positionnées sous la zone d’édition pour ne pas masquer le contenu, et les contributions à intégrer sont listées dans la colonne dédiée.
 - **Admin** : gestion des utilisateurs, rôles (user, admin, super admin) et groupes/équipes, avec création/suppression de groupes, attribution d’un ou plusieurs groupes existants aux utilisateurs et sélection d’admins newsletter, plus un récap des newsletters créées avec les contributeurs rattachés et les admins autorisés à publier, via des onglets « Newsletters & équipes », « Utilisateurs & rôles », « Groupes & droits ». Gestion des comptes : trigrammes (ex : GJV), mot de passe temporaire à la création et reset de mot de passe par utilisateur.
 - Onglets Admin : espacement resserré (y compris avec le header) et indicateur stable (pas de décalage en changeant d’onglet) pour garder une navigation compacte, avec un alignement plus serré entre le header de section, les onglets et les formulaires/boutons d’action pour limiter le blanc inutile.
 
@@ -39,6 +39,7 @@ Copiez `.env.example` (ou `.env.exemple`) vers `.env` et ajustez les valeurs si 
 - `SESSION_TTL_HOURS` (durée de validité d’une session, en heures)
 - `PASSWORD_MIN_LENGTH` (longueur minimale des mots de passe)
 - `OPENAI_API_KEY` (clé API OpenAI pour la génération IA)
+- `OPENAI_BASE_URL` (optionnel : URL compatible OpenAI, ex `http://localhost:8001/v1` pour vLLM local)
 - `OPENAI_MODEL` (modèle GPT utilisé, par défaut `gpt-4o-mini`)
 
 Assurez-vous que la base PostgreSQL existe (exemple) :
@@ -46,6 +47,12 @@ Assurez-vous que la base PostgreSQL existe (exemple) :
 ```bash
 createdb anjanews
 ```
+
+## vLLM local (mode OpenAI-compatible)
+
+- Démarrez vLLM avec un endpoint OpenAI-compatible (ex: `http://localhost:8001/v1`).
+- Renseignez `OPENAI_BASE_URL` + `OPENAI_MODEL` selon le modèle servi.
+- `OPENAI_API_KEY` peut rester vide en local si vLLM n'en demande pas.
 
 ## Lancement via `start.sh`
 
@@ -56,6 +63,7 @@ Utilisez toujours le script de lancement :
 ```
 
 - Le script installe les dépendances, applique les migrations et démarre backend + frontend.
+- Alembic et Uvicorn passent par `python -m ...` pour eviter les soucis de CLI manquant.
 - Les ports configurés dans `.env` sont libérés si déjà utilisés, pour éviter un démarrage sur un port inattendu.
 - L’interface est servie par Vite (port `FRONTEND_PORT`).
 
@@ -67,6 +75,7 @@ Utilisez toujours le script de lancement :
 ## Notes d’architecture
 
 - Backend FastAPI, schéma SQLAlchemy, migrations Alembic, API exposée sous `/api`.
+- Backend modulaire : `backend/app/main.py` pour le wiring, `backend/app/api/*.py` pour les routes, `backend/app/security.py` pour auth/sessions, `backend/app/schemas.py` + `backend/app/serializers.py` pour les I/O, `backend/app/newsletter_prompt.py` pour le prompt IA.
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
 - Authentification par session (token côté frontend dans `sessionStorage`), mots de passe hashés côté backend et obligation de reset après un mot de passe temporaire.
