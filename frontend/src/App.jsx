@@ -42,6 +42,8 @@ const ROLE_LABELS = {
 
 const AUTH_STORAGE_KEY = 'anjanews.session';
 const PASSWORD_MIN_LENGTH = 10;
+const DEFAULT_SYSTEM_PROMPT =
+  'Tu es un redacteur de newsletter interne. Rends uniquement du HTML (pas de markdown), avec un h1 puis des h2 si besoin. Ecris un article fluide et narratif, pas une liste de faits. Evite les listes a puces sauf si strictement necessaire. Ecris en francais, style clair et professionnel. Ne fabrique aucune information, synthese uniquement a partir des contributions.';
 
 function loadStoredSession() {
   try {
@@ -236,6 +238,9 @@ function App() {
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [generatorError, setGeneratorError] = useState('');
+  const [generatorSystemPrompt, setGeneratorSystemPrompt] = useState(
+    DEFAULT_SYSTEM_PROMPT
+  );
   const [activeGroupId] = useState('all');
   const location = useLocation();
   const navigate = useNavigate();
@@ -525,9 +530,14 @@ function App() {
     }
 
     try {
+      const systemPrompt = (generatorSystemPrompt || '').trim();
+      const payload = { editionId: currentEditionId };
+      if (systemPrompt) {
+        payload.systemPrompt = systemPrompt;
+      }
       const data = await request('/api/newsletters/generate', {
         method: 'POST',
-        body: JSON.stringify({ editionId: currentEditionId })
+        body: JSON.stringify(payload)
       });
       const html = (data?.html || '').trim();
       if (!html) {
@@ -1125,6 +1135,8 @@ function App() {
             onPublish={handlePublishDraft}
             isGenerating={isGeneratingDraft}
             generatorError={generatorError}
+            systemPrompt={generatorSystemPrompt}
+            onPromptChange={setGeneratorSystemPrompt}
           />
         )}
         {currentTab.id === 'admin' && (
@@ -1643,7 +1655,9 @@ function GeneratorTab({
   onGenerate,
   onPublish,
   isGenerating,
-  generatorError
+  generatorError,
+  systemPrompt,
+  onPromptChange
 }) {
   const hasContributions = contributions.length > 0;
   const editorRef = useRef(null);
@@ -1719,6 +1733,18 @@ function GeneratorTab({
         </header>
         <div className="panel-body">
           <div className="form-grid form-grid--compact">
+            <label className="field field--full">
+              <span className="field-label">Prompt de generation IA</span>
+              <textarea
+                value={systemPrompt}
+                onChange={(event) => onPromptChange(event.target.value)}
+                rows={6}
+                placeholder="Instructions pour la generation IA"
+              />
+              <span className="helper-text">
+                Laisse vide pour revenir au prompt par defaut.
+              </span>
+            </label>
             <label className="field field--full">
               <span className="field-label">Image (URL optionnelle)</span>
               <input

@@ -25,6 +25,7 @@ class NewsletterIn(BaseModel):
 
 class NewsletterGenerateIn(BaseModel):
     editionId: UUID
+    systemPrompt: Optional[str] = None
 
 
 class ReactionIn(BaseModel):
