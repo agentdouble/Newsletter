@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   color-scheme: light;
   --bg: #ffffff;
@@ -20,6 +24,79 @@
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
   --font-serif: 'charter', 'Georgia', 'Times New Roman', serif;
+  --app-background: 0 0% 100%;
+  --app-foreground: 0 0% 7%;
+  --app-card: 0 0% 100%;
+  --app-card-foreground: 0 0% 7%;
+  --app-popover: 0 0% 100%;
+  --app-popover-foreground: 0 0% 7%;
+  --app-primary: 0 0% 9%;
+  --app-primary-foreground: 0 0% 98%;
+  --app-secondary: 0 0% 96%;
+  --app-secondary-foreground: 0 0% 9%;
+  --app-muted: 0 0% 96%;
+  --app-muted-foreground: 0 0% 40%;
+  --app-accent: 0 0% 96%;
+  --app-accent-foreground: 0 0% 9%;
+  --app-destructive: 0 72% 50%;
+  --app-destructive-foreground: 0 0% 98%;
+  --app-border: 0 0% 90%;
+  --app-input: 0 0% 90%;
+  --app-ring: 0 0% 9%;
+  --app-radius: 6px;
+  --sidebar-background: 0 0% 98%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 240 5.9% 10%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 240 4.8% 95.9%;
+  --sidebar-accent-foreground: 240 5.9% 10%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0f1115;
+  --bg-elevated: #151823;
+  --bg-elevated-soft: #1b1f2b;
+  --border-subtle: #2a2f3c;
+  --border-strong: #f2f2f2;
+  --accent: #f4f1e8;
+  --accent-soft: #f4f1e8;
+  --accent-strong: #ffffff;
+  --accent-alt: #f4f1e8;
+  --positive: #f4f1e8;
+  --negative: #a1a6b3;
+  --text: #f5f5f5;
+  --text-soft: #a1a6b3;
+  --shadow-soft: none;
+  --app-background: 220 20% 8%;
+  --app-foreground: 210 20% 96%;
+  --app-card: 220 20% 10%;
+  --app-card-foreground: 210 20% 96%;
+  --app-popover: 220 20% 10%;
+  --app-popover-foreground: 210 20% 96%;
+  --app-primary: 210 20% 96%;
+  --app-primary-foreground: 220 20% 10%;
+  --app-secondary: 220 16% 16%;
+  --app-secondary-foreground: 210 20% 96%;
+  --app-muted: 220 16% 16%;
+  --app-muted-foreground: 210 10% 60%;
+  --app-accent: 220 16% 18%;
+  --app-accent-foreground: 210 20% 96%;
+  --app-destructive: 0 62% 45%;
+  --app-destructive-foreground: 210 20% 96%;
+  --app-border: 220 16% 20%;
+  --app-input: 220 16% 20%;
+  --app-ring: 210 20% 96%;
+  --sidebar-background: 240 5.9% 10%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 *,
@@ -42,18 +119,19 @@ body {
 }
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100%;
+  width: 100%;
   max-width: 1120px;
   margin: 0 auto;
-  padding: 16px 16px 32px;
+  padding: 20px 20px 32px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 @media (min-width: 900px) {
   .app-shell {
-    padding: 20px 8px 40px;
+    padding: 24px 28px 40px;
   }
 }
 
@@ -1081,8 +1159,16 @@ body {
   align-items: center;
   justify-content: center;
   padding: 32px 16px;
-  background: radial-gradient(circle at top left, #f6f6f6 0%, transparent 45%),
-    radial-gradient(circle at bottom right, #efefef 0%, transparent 45%),
+  background: radial-gradient(
+      circle at top left,
+      var(--bg-elevated-soft) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      var(--bg-elevated) 0%,
+      transparent 45%
+    ),
     var(--bg);
 }
 

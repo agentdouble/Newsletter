@@ -6,7 +6,7 @@ Application MVP pour collecter des success stories / fail stories et générer d
 
 - Backend : Python (FastAPI + SQLAlchemy + Alembic)
 - Base de données : PostgreSQL
-- Frontend : React + Vite (`frontend/`), `react-router-dom` pour les routes frontend, `chart.js` pour la visualisation du taux de participation.
+- Frontend : React + Vite (`frontend/`), `react-router-dom` pour les routes frontend, `chart.js` pour la visualisation du taux de participation, Tailwind CSS + structure shadcn (`frontend/src/components/ui`) et support TypeScript (tsconfig).
   - Thème visuel : noir & blanc inspiré de Medium, avec la police de lecture `charter` chargée depuis `glyph.medium.com` (fallback serif système si la ressource n’est pas disponible), et des éléments légèrement arrondis (boutons, champs, cartes, header, onglets et panneaux) pour adoucir l’interface ; tous les blocs carrés utilisent désormais des coins arrondis pour éviter les angles vifs.
 
 ## Fonctionnalités du MVP
@@ -71,5 +71,5 @@ Utilisez toujours le script de lancement :
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
 - Authentification par session (token côté frontend dans `sessionStorage`), mots de passe hashés côté backend et obligation de reset après un mot de passe temporaire.
-- Header compact, aligné sur une grille noir & blanc, sticky (toujours visible) avec navigation par onglets synchronisée avec les routes (`/newsletter/fil`, `/newsletter/collect`, `/newsletter/generateur`, `/newsletter/admin`), intégrée dans la même barre que le logo « Anjanews », avec l’utilisateur connecté et un bouton de déconnexion à droite.
+- Navigation déplacée dans un bandeau latéral collé à gauche (onglets synchronisés avec les routes), header compact gardant le logo « Anjanews », carte profil cliquable dans la sidebar (nom + déconnexion) et toggle dark mode (classe `dark` persistée en localStorage).
 - Les logs (`console.info`) sont ajoutés uniquement sur les actions clés (connexion, création de contribution, génération et publication d’une newsletter, ouverture d’une newsletter depuis le fil, réactions ou commentaires).
