@@ -1117,22 +1117,42 @@ function App() {
         </SidebarContent>
         <SidebarSeparator />
         <SidebarFooter className="px-4 pb-4 pt-3">
-          <div className="flex flex-col items-start gap-3">
-            <button
-              type="button"
-              className={
-                isUserMenuOpen
-                  ? 'flex h-12 w-12 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent text-xs font-semibold uppercase text-sidebar-accent-foreground shadow-sm transition'
-                  : 'flex h-12 w-12 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent/70 text-xs font-semibold uppercase text-sidebar-accent-foreground shadow-sm transition hover:bg-sidebar-accent'
-              }
-              onClick={() => setIsUserMenuOpen((prev) => !prev)}
-              aria-expanded={isUserMenuOpen}
-              aria-label="Profil utilisateur"
-            >
-              {userInitials}
-            </button>
+          <div className="relative w-full">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className={
+                  isUserMenuOpen
+                    ? 'flex h-12 w-12 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent text-xs font-semibold uppercase text-sidebar-accent-foreground shadow-sm transition'
+                    : 'flex h-12 w-12 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent/70 text-xs font-semibold uppercase text-sidebar-accent-foreground shadow-sm transition hover:bg-sidebar-accent'
+                }
+                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                aria-expanded={isUserMenuOpen}
+                aria-label="Profil utilisateur"
+              >
+                {userInitials}
+              </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-full border border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                onClick={() => setIsDarkMode((prev) => !prev)}
+                aria-label={
+                  isDarkMode
+                    ? 'Activer le mode clair'
+                    : 'Activer le mode sombre'
+                }
+              >
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
             {isUserMenuOpen && (
-              <div className="w-full rounded-xl border border-sidebar-border bg-sidebar p-3 text-sidebar-foreground shadow-sm">
+              <div className="absolute bottom-full left-0 z-20 mb-3 w-full rounded-xl border border-sidebar-border bg-sidebar p-3 text-sidebar-foreground shadow-sm">
                 <div className="text-sm font-semibold">
                   {currentUser?.name || 'Utilisateur connecté'}
                 </div>
@@ -1155,38 +1175,11 @@ function App() {
           </div>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset className="app-inset">
         <div className="app-shell">
-          <header className="app-header">
-            <div className="app-header-top">
-              <div className="app-header-main">
-                <SidebarTrigger className="md:hidden" />
-                <div className="logo-pill">
-                  <span className="logo-dot" />
-                  <span className="logo-text">Anjanews</span>
-                </div>
-              </div>
-              <div className="header-controls">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsDarkMode((prev) => !prev)}
-                  aria-label={
-                    isDarkMode
-                      ? 'Activer le mode clair'
-                      : 'Activer le mode sombre'
-                  }
-                >
-                  {isDarkMode ? (
-                    <Sun className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </header>
+          <div className="flex items-center md:hidden">
+            <SidebarTrigger />
+          </div>
 
           <main className="app-main">
             {currentTab.id === 'feed' && (
@@ -1215,6 +1208,7 @@ function App() {
                 contributions={contributions}
                 users={users}
                 targetLabel={currentNewsletterLabel}
+                isDarkMode={isDarkMode}
               />
             )}
             {currentTab.id === 'generator' && (
@@ -1585,7 +1579,7 @@ function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
   );
 }
 
-function ContributionTab({ contributions, users, targetLabel }) {
+function ContributionTab({ contributions, users, targetLabel, isDarkMode }) {
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
 
@@ -1624,6 +1618,12 @@ function ContributionTab({ contributions, users, targetLabel }) {
     const ctx = node.getContext('2d');
     if (!ctx) return undefined;
 
+    const rootStyles = getComputedStyle(document.documentElement);
+    const primaryColor =
+      rootStyles.getPropertyValue('--accent').trim() || '#000000';
+    const secondaryColor =
+      rootStyles.getPropertyValue('--text-soft').trim() || '#e0e0e0';
+
     chartInstanceRef.current = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -1631,18 +1631,24 @@ function ContributionTab({ contributions, users, targetLabel }) {
         datasets: [
           {
             data,
-            backgroundColor: ['#000000', '#e0e0e0'],
+            backgroundColor: [primaryColor, secondaryColor],
             borderWidth: 0
           }
         ]
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+          padding: 6
+        },
         plugins: {
           legend: {
             display: false
           }
         },
         cutout: '70%',
+        radius: '88%',
         animation: false
       }
     });
@@ -1653,7 +1659,7 @@ function ContributionTab({ contributions, users, targetLabel }) {
         chartInstanceRef.current = null;
       }
     };
-  }, [contributorCount, remaining]);
+  }, [contributorCount, remaining, isDarkMode]);
 
   useEffect(() => {
     console.info('[contributions] tab_opened', {
