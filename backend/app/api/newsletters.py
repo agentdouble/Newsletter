@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..logger import logger
 from ..models import Comment, Contribution, Edition, Group, Newsletter
-from ..newsletter_prompt import SYSTEM_MESSAGE, build_newsletter_prompt
+from ..newsletter_prompt import build_newsletter_prompt, build_system_message
 from ..schemas import CommentIn, NewsletterGenerateIn, NewsletterIn, ReactionIn
 from ..security import get_current_user, get_session, require_admin
 from ..serializers import serialize_comment, serialize_newsletter
@@ -44,6 +44,13 @@ def generate_newsletter(
     if not prompt:
         raise HTTPException(status_code=400, detail="NO_CONTRIBUTIONS")
 
+    system_prompt_override = (payload.systemPrompt or "").strip()
+    system_prompt = build_system_message(system_prompt_override)
+    prompt_context = {
+        "custom_prompt": bool(system_prompt_override),
+        "prompt_length": len(system_prompt),
+    }
+
     api_key = settings.openai_api_key or "local"
     base_url = settings.openai_base_url or None
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=30.0)
@@ -52,7 +59,7 @@ def generate_newsletter(
         completion = client.chat.completions.create(
             model=settings.openai_model,
             messages=[
-                {"role": "system", "content": SYSTEM_MESSAGE},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.4,
@@ -64,6 +71,7 @@ def generate_newsletter(
                 "edition_id": str(edition.id),
                 "model": settings.openai_model,
                 "base_url": settings.openai_base_url or "openai",
+                **prompt_context,
             },
         )
         raise HTTPException(status_code=502, detail="OPENAI_REQUEST_FAILED") from error
@@ -76,6 +84,7 @@ def generate_newsletter(
                 "edition_id": str(edition.id),
                 "model": settings.openai_model,
                 "base_url": settings.openai_base_url or "openai",
+                **prompt_context,
             },
         )
         raise HTTPException(status_code=502, detail="OPENAI_EMPTY_RESPONSE")
@@ -87,6 +96,7 @@ def generate_newsletter(
             "contributions": len(contributions),
             "model": settings.openai_model,
             "base_url": settings.openai_base_url or "openai",
+            **prompt_context,
         },
     )
 

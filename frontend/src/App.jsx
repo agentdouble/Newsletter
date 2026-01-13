@@ -42,6 +42,8 @@ const ROLE_LABELS = {
 
 const AUTH_STORAGE_KEY = 'anjanews.session';
 const PASSWORD_MIN_LENGTH = 10;
+const DEFAULT_SYSTEM_PROMPT =
+  'Tu es un redacteur de newsletter interne. Ecris un article fluide et narratif, pas une liste de faits. Evite les listes a puces sauf si strictement necessaire. Ecris en francais, style clair et professionnel. Ne fabrique aucune information, synthese uniquement a partir des contributions.';
 
 function loadStoredSession() {
   try {
@@ -236,6 +238,9 @@ function App() {
   const [newsletterDraftHtml, setNewsletterDraftHtml] = useState('');
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [generatorError, setGeneratorError] = useState('');
+  const [generatorSystemPrompt, setGeneratorSystemPrompt] = useState(
+    DEFAULT_SYSTEM_PROMPT
+  );
   const [activeGroupId] = useState('all');
   const location = useLocation();
   const navigate = useNavigate();
@@ -525,9 +530,15 @@ function App() {
     }
 
     try {
+      const systemPrompt = (generatorSystemPrompt || '').trim();
+      const defaultPrompt = DEFAULT_SYSTEM_PROMPT.trim();
+      const payload = { editionId: currentEditionId };
+      if (systemPrompt && systemPrompt !== defaultPrompt) {
+        payload.systemPrompt = systemPrompt;
+      }
       const data = await request('/api/newsletters/generate', {
         method: 'POST',
-        body: JSON.stringify({ editionId: currentEditionId })
+        body: JSON.stringify(payload)
       });
       const html = (data?.html || '').trim();
       if (!html) {
@@ -1135,6 +1146,9 @@ function App() {
             resetPasswords={resetPasswords}
             passwordMinLength={PASSWORD_MIN_LENGTH}
             defaultNewsletterTitle={currentNewsletterLabel}
+            systemPrompt={generatorSystemPrompt}
+            defaultSystemPrompt={DEFAULT_SYSTEM_PROMPT}
+            onPromptChange={setGeneratorSystemPrompt}
             onAddUser={handleAddUser}
             onResetUserPassword={handleResetUserPassword}
             onAddGroup={handleAddGroup}
@@ -1714,7 +1728,8 @@ function GeneratorTab({
           <h2>Draft de newsletter</h2>
           <p className="panel-subtitle">
             Généré automatiquement à partir des contributions reçues pour{' '}
-            {targetLabel}. À relire avant envoi.
+            {targetLabel}. À relire avant envoi. Prompt IA dans l'onglet Admin{' '}
+            {'>'} Prompt IA.
           </p>
         </header>
         <div className="panel-body">
@@ -1770,6 +1785,9 @@ function AdminTab({
   resetPasswords,
   passwordMinLength,
   defaultNewsletterTitle,
+  systemPrompt,
+  defaultSystemPrompt,
+  onPromptChange,
   onAddUser,
   onResetUserPassword,
   onAddGroup,
@@ -1792,7 +1810,8 @@ function AdminTab({
   const adminTabs = [
     { id: 'newsletters', label: 'Newsletters & équipes' },
     { id: 'users', label: 'Utilisateurs & rôles' },
-    { id: 'groups', label: 'Groupes & droits' }
+    { id: 'groups', label: 'Groupes & droits' },
+    { id: 'prompt', label: 'Prompt IA' }
   ];
   const [activeAdminTab, setActiveAdminTab] = useState(adminTabs[0].id);
 
@@ -2245,6 +2264,43 @@ function AdminTab({
               </button>
             </div>
           </form>
+        </article>
+      )}
+
+      {activeAdminTab === 'prompt' && (
+        <article className="panel-card">
+          <header className="panel-header">
+            <h2>Prompt IA</h2>
+            <p className="panel-subtitle">
+              Instructions transmises au modele pour generer la newsletter.
+            </p>
+          </header>
+          <div className="panel-body">
+            <div className="form-grid form-grid--compact">
+              <label className="field field--full">
+                <span className="field-label">Instructions additionnelles</span>
+                <textarea
+                  value={systemPrompt}
+                  onChange={(event) => onPromptChange(event.target.value)}
+                  rows={8}
+                  placeholder="Instructions pour la generation IA"
+                />
+                <span className="helper-text">
+                  Laisse vide pour utiliser le prompt par defaut. Le format HTML
+                  est impose automatiquement.
+                </span>
+              </label>
+            </div>
+            <div className="form-actions form-actions--right">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => onPromptChange(defaultSystemPrompt)}
+              >
+                Reinitialiser le prompt
+              </button>
+            </div>
+          </div>
         </article>
       )}
     </section>
