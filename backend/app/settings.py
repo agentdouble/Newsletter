@@ -14,6 +14,7 @@ class Settings:
     session_ttl_hours: int
     password_min_length: int
     openai_api_key: str
+    openai_base_url: str
     openai_model: str
 
 
@@ -40,5 +41,6 @@ def get_settings() -> Settings:
         session_ttl_hours=int(os.getenv("SESSION_TTL_HOURS", "12")),
         password_min_length=int(os.getenv("PASSWORD_MIN_LENGTH", "10")),
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
+        openai_base_url=os.getenv("OPENAI_BASE_URL", ""),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
     )
