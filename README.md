@@ -56,6 +56,7 @@ Utilisez toujours le script de lancement :
 ```
 
 - Le script installe les dépendances, applique les migrations et démarre backend + frontend.
+- Alembic et Uvicorn passent par `python -m ...` pour eviter les soucis de CLI manquant.
 - Les ports configurés dans `.env` sont libérés si déjà utilisés, pour éviter un démarrage sur un port inattendu.
 - L’interface est servie par Vite (port `FRONTEND_PORT`).
 
