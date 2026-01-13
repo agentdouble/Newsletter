@@ -1727,7 +1727,8 @@ function GeneratorTab({
           <h2>Draft de newsletter</h2>
           <p className="panel-subtitle">
             Généré automatiquement à partir des contributions reçues pour{' '}
-            {targetLabel}. À relire avant envoi. Prompt IA dans l'onglet Admin > Prompt IA.
+            {targetLabel}. À relire avant envoi. Prompt IA dans l'onglet Admin{' '}
+            {'>'} Prompt IA.
           </p>
         </header>
         <div className="panel-body">
