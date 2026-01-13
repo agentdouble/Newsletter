@@ -19,12 +19,14 @@ class NewsletterIn(BaseModel):
     title: str
     body: str
     imageUrl: Optional[str] = None
+    color: Optional[str] = None
     groupId: Optional[UUID] = None
     editionId: Optional[UUID] = None
 
 
 class NewsletterGenerateIn(BaseModel):
     editionId: UUID
+    groupId: Optional[UUID] = None
     systemPrompt: Optional[str] = None
 
 
