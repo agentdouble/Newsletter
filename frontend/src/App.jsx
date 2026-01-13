@@ -1,6 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chart, ArcElement, DoughnutController, Tooltip, Legend } from 'chart.js';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Moon, Sun } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarSeparator,
+  SidebarTrigger
+} from '@/components/ui/sidebar';
 
 Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
@@ -245,6 +260,31 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const role = currentUser?.role || 'user';
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = localStorage.getItem('anjanews.theme');
+      if (stored) return stored === 'dark';
+    } catch (error) {
+      // Ignore storage errors and fall back to system preference.
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('anjanews.theme', isDarkMode ? 'dark' : 'light');
+    } catch (error) {
+      // Ignore storage errors.
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (location.pathname === '/') {
@@ -791,6 +831,10 @@ function App() {
 
   const currentTab =
     visibleTabs.find((tab) => tab.id === currentTabId) || visibleTabs[0];
+  const userInitials = useMemo(
+    () => toTrigram(currentUser?.name || ROLE_LABELS[role]),
+    [currentUser?.name, role]
+  );
 
   const loginDisabled =
     isProcessingAuth ||
@@ -1057,109 +1101,162 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="app-header-top">
-          <div className="app-header-main">
-            <div className="logo-pill">
-              <span className="logo-dot" />
-              <span className="logo-text">Anjanews</span>
-            </div>
+    <SidebarProvider>
+      <Sidebar className="border-r border-sidebar-border">
+        <SidebarHeader className="px-4 pb-3 pt-4">
+          <div className="flex items-center gap-2">
+            <span className="logo-dot" />
+            <span className="logo-text">Anjanews</span>
           </div>
-          <div className="header-controls">
-            <nav className="tab-nav">
-              {visibleTabs.map((tab) => (
-                <button
-                  key={tab.id}
+        </SidebarHeader>
+        <SidebarSeparator />
+        <SidebarContent className="px-2 py-3">
+          <SidebarMenu>
+            {visibleTabs.map((tab) => (
+              <SidebarMenuItem key={tab.id}>
+                <SidebarMenuButton
                   type="button"
-                  className={
-                    tab.id === currentTab.id
-                      ? 'tab-button tab-button--active'
-                      : 'tab-button'
-                  }
+                  isActive={tab.id === currentTab.id}
+                  tooltip={tab.label}
                   onClick={() => navigate(TAB_ROUTES[tab.id])}
                 >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-            <div className="user-chip">
-              <span className="user-name">{currentUser?.name}</span>
-              <span className="tag tag--soft">{ROLE_LABELS[role]}</span>
+                  <span>{tab.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarSeparator />
+        <SidebarFooter className="px-4 pb-4 pt-3">
+          <div className="relative w-full">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="secondary-button"
-                onClick={() => handleLogout({})}
+                className={
+                  isUserMenuOpen
+                    ? 'flex h-12 w-12 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent text-xs font-semibold uppercase text-sidebar-accent-foreground shadow-sm transition'
+                    : 'flex h-12 w-12 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent/70 text-xs font-semibold uppercase text-sidebar-accent-foreground shadow-sm transition hover:bg-sidebar-accent'
+                }
+                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                aria-expanded={isUserMenuOpen}
+                aria-label="Profil utilisateur"
               >
-                Déconnexion
+                {userInitials}
               </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-full border border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                onClick={() => setIsDarkMode((prev) => !prev)}
+                aria-label={
+                  isDarkMode
+                    ? 'Activer le mode clair'
+                    : 'Activer le mode sombre'
+                }
+              >
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
             </div>
+            {isUserMenuOpen && (
+              <div className="absolute bottom-full left-0 z-20 mb-3 w-full rounded-xl border border-sidebar-border bg-sidebar p-3 text-sidebar-foreground shadow-sm">
+                <div className="text-sm font-semibold">
+                  {currentUser?.name || 'Utilisateur connecté'}
+                </div>
+                <div className="text-xs text-sidebar-foreground/70">
+                  {ROLE_LABELS[role]}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3 w-full justify-center text-xs"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    handleLogout({});
+                  }}
+                >
+                  Déconnexion
+                </Button>
+              </div>
+            )}
           </div>
-        </div>
-      </header>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset className="app-inset">
+        <div className="app-shell">
+          <div className="flex items-center md:hidden">
+            <SidebarTrigger />
+          </div>
 
-      <main className="app-main">
-        {currentTab.id === 'feed' && (
-          <FeedTab
-            newsletters={newsletters}
-            groups={groups}
-            activeGroupId={activeGroupId}
-            selectedNewsletterId={selectedNewsletterId}
-            onOpenNewsletter={handleOpenNewsletter}
-            onBackToFeed={handleBackToFeed}
-            onReact={handleReactToNewsletter}
-            onAddComment={handleAddComment}
-            viewerLabel={commentAuthor}
-          />
-        )}
-        {currentTab.id === 'collect' && (
-          <CollectTab
-            targetLabel={currentNewsletterLabel}
-            onCreate={handleCreateContribution}
-            isReady={!isBootstrapping && Boolean(currentEditionId)}
-            authorLabel={currentUser?.name || 'Utilisateur connecté'}
-          />
-        )}
-        {currentTab.id === 'contributions' && (
-          <ContributionTab
-            contributions={contributions}
-            users={users}
-            targetLabel={currentNewsletterLabel}
-          />
-        )}
-        {currentTab.id === 'generator' && (
-          <GeneratorTab
-            contributions={generatorContributions}
-            targetLabel={currentNewsletterLabel}
-            draftHtml={newsletterDraftHtml}
-            onGenerate={handleGenerateDraft}
-            onPublish={handlePublishDraft}
-            isGenerating={isGeneratingDraft}
-            generatorError={generatorError}
-          />
-        )}
-        {currentTab.id === 'admin' && (
-          <AdminTab
-            newsletters={newsletters}
-            users={users}
-            groups={groups}
-            resetPasswords={resetPasswords}
-            passwordMinLength={PASSWORD_MIN_LENGTH}
-            defaultNewsletterTitle={currentNewsletterLabel}
-            systemPrompt={generatorSystemPrompt}
-            defaultSystemPrompt={DEFAULT_SYSTEM_PROMPT}
-            onPromptChange={setGeneratorSystemPrompt}
-            onAddUser={handleAddUser}
-            onResetUserPassword={handleResetUserPassword}
-            onAddGroup={handleAddGroup}
-            onUpdateGroupAdmins={handleUpdateGroupAdmins}
-            onUpdateUserGroups={handleUpdateUserGroups}
-            onDeleteGroup={handleDeleteGroup}
-            onCreateNewsletter={handleCreateNewsletter}
-          />
-        )}
-      </main>
-    </div>
+          <main className="app-main">
+            {currentTab.id === 'feed' && (
+              <FeedTab
+                newsletters={newsletters}
+                groups={groups}
+                activeGroupId={activeGroupId}
+                selectedNewsletterId={selectedNewsletterId}
+                onOpenNewsletter={handleOpenNewsletter}
+                onBackToFeed={handleBackToFeed}
+                onReact={handleReactToNewsletter}
+                onAddComment={handleAddComment}
+                viewerLabel={commentAuthor}
+              />
+            )}
+            {currentTab.id === 'collect' && (
+              <CollectTab
+                targetLabel={currentNewsletterLabel}
+                onCreate={handleCreateContribution}
+                isReady={!isBootstrapping && Boolean(currentEditionId)}
+                authorLabel={currentUser?.name || 'Utilisateur connecté'}
+              />
+            )}
+            {currentTab.id === 'contributions' && (
+              <ContributionTab
+                contributions={contributions}
+                users={users}
+                targetLabel={currentNewsletterLabel}
+                isDarkMode={isDarkMode}
+              />
+            )}
+            {currentTab.id === 'generator' && (
+              <GeneratorTab
+                contributions={generatorContributions}
+                targetLabel={currentNewsletterLabel}
+                draftHtml={newsletterDraftHtml}
+                onGenerate={handleGenerateDraft}
+                onPublish={handlePublishDraft}
+                isGenerating={isGeneratingDraft}
+                generatorError={generatorError}
+              />
+            )}
+            {currentTab.id === 'admin' && (
+              <AdminTab
+                newsletters={newsletters}
+                users={users}
+                groups={groups}
+                resetPasswords={resetPasswords}
+                passwordMinLength={PASSWORD_MIN_LENGTH}
+                defaultNewsletterTitle={currentNewsletterLabel}
+                systemPrompt={generatorSystemPrompt}
+                defaultSystemPrompt={DEFAULT_SYSTEM_PROMPT}
+                onPromptChange={setGeneratorSystemPrompt}
+                onAddUser={handleAddUser}
+                onResetUserPassword={handleResetUserPassword}
+                onAddGroup={handleAddGroup}
+                onUpdateGroupAdmins={handleUpdateGroupAdmins}
+                onUpdateUserGroups={handleUpdateUserGroups}
+                onDeleteGroup={handleDeleteGroup}
+                onCreateNewsletter={handleCreateNewsletter}
+              />
+            )}
+          </main>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
@@ -1496,7 +1593,7 @@ function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
   );
 }
 
-function ContributionTab({ contributions, users, targetLabel }) {
+function ContributionTab({ contributions, users, targetLabel, isDarkMode }) {
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
 
@@ -1535,6 +1632,12 @@ function ContributionTab({ contributions, users, targetLabel }) {
     const ctx = node.getContext('2d');
     if (!ctx) return undefined;
 
+    const rootStyles = getComputedStyle(document.documentElement);
+    const primaryColor =
+      rootStyles.getPropertyValue('--accent').trim() || '#000000';
+    const secondaryColor =
+      rootStyles.getPropertyValue('--text-soft').trim() || '#e0e0e0';
+
     chartInstanceRef.current = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -1542,18 +1645,24 @@ function ContributionTab({ contributions, users, targetLabel }) {
         datasets: [
           {
             data,
-            backgroundColor: ['#000000', '#e0e0e0'],
+            backgroundColor: [primaryColor, secondaryColor],
             borderWidth: 0
           }
         ]
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+          padding: 6
+        },
         plugins: {
           legend: {
             display: false
           }
         },
         cutout: '70%',
+        radius: '88%',
         animation: false
       }
     });
@@ -1564,7 +1673,7 @@ function ContributionTab({ contributions, users, targetLabel }) {
         chartInstanceRef.current = null;
       }
     };
-  }, [contributorCount, remaining]);
+  }, [contributorCount, remaining, isDarkMode]);
 
   useEffect(() => {
     console.info('[contributions] tab_opened', {

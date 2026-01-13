@@ -6,19 +6,19 @@ Application MVP pour collecter des success stories / fail stories et générer d
 
 - Backend : Python (FastAPI + SQLAlchemy + Alembic)
 - Base de données : PostgreSQL
-- Frontend : React + Vite (`frontend/`), `react-router-dom` pour les routes frontend, `chart.js` pour la visualisation du taux de participation.
-  - Thème visuel : noir & blanc inspiré de Medium, avec la police de lecture `charter` chargée depuis `glyph.medium.com` (fallback serif système si la ressource n’est pas disponible), et des éléments légèrement arrondis (boutons, champs, cartes, header, onglets et panneaux) pour adoucir l’interface ; tous les blocs carrés utilisent désormais des coins arrondis pour éviter les angles vifs.
+- Frontend : React + Vite (`frontend/`), `react-router-dom` pour les routes frontend, `chart.js` pour la visualisation du taux de participation, Tailwind CSS + structure shadcn (`frontend/src/components/ui`) et support TypeScript (tsconfig).
+  - Thème visuel : design moderne inspiré shadcn (palette neutre, surfaces en cards, gradients subtils), typographies `Space Grotesk` (UI) et `Newsreader` (lecture) chargées via Google Fonts, coins arrondis et ombres douces, avec mode sombre.
 
 ## Fonctionnalités du MVP
 
 - **Authentification** : page de connexion reliée au backend, sessions, mots de passe temporaires fournis par l’admin, changement obligatoire à la première connexion et reset possible côté admin.
-- **Fil** : fil de newsletters écrites comme des articles (quelques exemples mockés + newsletters générées automatiquement), présenté dans un design noir & blanc minimaliste inspiré de Medium (colonne centrale sobre, sans titre de section, typographie serif pour le contenu, vignettes à droite dans le fil et image plus large en haut de l’article ouvert, recadrée dans une hauteur limitée avec coins arrondis). Chaque newsletter du fil est cliquable et dispose d’une URL dédiée (`/newsletter/fil/:id`) pour faciliter le partage ; lorsqu’une newsletter est ouverte, seule cette newsletter est affichée en lecture seule (non cliquable) avec un bouton « Retour au fil complet ».
-- **Réactions & commentaires** : chaque newsletter peut recevoir des réactions rapides noir & blanc (pictos pouce contour) et des commentaires publiés sous le nom du compte connecté, directement depuis la vue détaillée, avec un compteur sobre. La barre d’engagement est placée sous chaque newsletter.
-- **Collect** : formulaire noir & blanc compact avec un seul bloc de saisie des faits marquants sur une seule vue, avec exemples contextualisés aux services d’assurance ; le compte connecté signe automatiquement la contribution (plus de champ nom à renseigner).
+- **Fil** : fil de newsletters écrites comme des articles (quelques exemples mockés + newsletters générées automatiquement), présenté en cards modernes (colonne centrale, typographie serif pour le contenu, vignette à droite dans le fil et image plus large en haut de l’article ouvert, recadrée avec coins arrondis). Chaque newsletter du fil est cliquable et dispose d’une URL dédiée (`/newsletter/fil/:id`) pour faciliter le partage ; lorsqu’une newsletter est ouverte, seule cette newsletter est affichée en lecture seule (non cliquable) avec un bouton « Retour au fil complet ».
+- **Réactions & commentaires** : chaque newsletter peut recevoir des réactions rapides (pictos pouce) et des commentaires publiés sous le nom du compte connecté, directement depuis la vue détaillée, avec un compteur sobre. La barre d’engagement est placée sous chaque newsletter.
+- **Collect** : formulaire compact avec un seul bloc de saisie des faits marquants sur une seule vue, avec exemples contextualisés aux services d’assurance ; le compte connecté signe automatiquement la contribution (plus de champ nom à renseigner).
 - **Contributions** : vue de suivi `/newsletter/contribution` affichant les contributions de l’édition en cours, le taux de participation (unique) des membres via un donut Chart.js, et la liste nominative des apports.
-- **Générateur** : vue admin qui consomme toutes les contributions (faits marquants / success / fail) de l’édition et génère un article de newsletter via IA (OpenAI GPT), immédiatement poussé dans le fil, avec une surface d’édition simple en noir et blanc (typographie identique à la lecture) et un prompt IA modifiable depuis l'onglet Admin > Prompt IA (laisser vide pour utiliser le prompt par défaut, avec un socle fixe non modifiable qui impose le HTML h1/h2). Les actions « Générer un draft » et « Publier dans le fil » sont positionnées sous la zone d’édition pour ne pas masquer le contenu, et les contributions à intégrer sont listées dans la colonne dédiée.
+- **Générateur** : vue admin qui consomme toutes les contributions (faits marquants / success / fail) de l’édition et génère un article de newsletter via IA (OpenAI GPT), immédiatement poussé dans le fil, avec une surface d’édition sobre (typographie identique à la lecture) et un prompt IA modifiable depuis l’onglet Admin > Prompt IA (laisser vide pour utiliser le prompt par défaut, avec un socle fixe non modifiable qui impose le HTML h1/h2). Les actions « Générer un draft » et « Publier dans le fil » sont positionnées sous la zone d’édition pour ne pas masquer le contenu, et les contributions à intégrer sont listées dans la colonne dédiée.
 - **Admin** : gestion des utilisateurs, rôles (user, admin, super admin) et groupes/équipes, avec création/suppression de groupes, attribution d’un ou plusieurs groupes existants aux utilisateurs et sélection d’admins newsletter, plus un récap des newsletters créées avec les contributeurs rattachés et les admins autorisés à publier, via des onglets « Newsletters & équipes », « Utilisateurs & rôles », « Groupes & droits ». Gestion des comptes : trigrammes (ex : GJV), mot de passe temporaire à la création et reset de mot de passe par utilisateur.
-- Onglets Admin : espacement resserré (y compris avec le header) et indicateur stable (pas de décalage en changeant d’onglet) pour garder une navigation compacte, avec un alignement plus serré entre le header de section, les onglets et les formulaires/boutons d’action pour limiter le blanc inutile.
+- Onglets Admin : bandeau d’onglets en pills, indicateur stable (pas de décalage en changeant d’onglet) et alignement resserré entre en-têtes, onglets et formulaires/boutons d’action pour limiter le blanc inutile.
 
 > Remarque : les données sont persistées dans PostgreSQL via le backend.
 
@@ -66,6 +66,7 @@ Utilisez toujours le script de lancement :
 - Alembic et Uvicorn passent par `python -m ...` pour eviter les soucis de CLI manquant.
 - Les ports configurés dans `.env` sont libérés si déjà utilisés, pour éviter un démarrage sur un port inattendu.
 - L’interface est servie par Vite (port `FRONTEND_PORT`).
+- Les migrations et Uvicorn sont lancés via `uv run -m` pour garantir l’exécution même si les entrypoints ne sont pas détectés.
 
 ## Première connexion
 
@@ -79,5 +80,5 @@ Utilisez toujours le script de lancement :
 - Code orienté composants React simples, avec un minimum de dépendances.
 - Pas de state global complexe : tout est géré dans le composant racine pour ce MVP.
 - Authentification par session (token côté frontend dans `sessionStorage`), mots de passe hashés côté backend et obligation de reset après un mot de passe temporaire.
-- Header compact, aligné sur une grille noir & blanc, sticky (toujours visible) avec navigation par onglets synchronisée avec les routes (`/newsletter/fil`, `/newsletter/collect`, `/newsletter/generateur`, `/newsletter/admin`), intégrée dans la même barre que le logo « Anjanews », avec l’utilisateur connecté et un bouton de déconnexion à droite.
+- Navigation déplacée dans un bandeau latéral collé à gauche (onglets synchronisés avec les routes), logo « Anjanews » en haut de la sidebar, carte profil cliquable dans la sidebar (nom + déconnexion) avec un panneau qui s’ouvre au-dessus de l’avatar, et toggle dark mode placé à côté (classe `dark` persistée en localStorage).
 - Les logs (`console.info`) sont ajoutés uniquement sur les actions clés (connexion, création de contribution, génération et publication d’une newsletter, ouverture d’une newsletter depuis le fil, réactions ou commentaires).
