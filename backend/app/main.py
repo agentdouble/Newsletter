@@ -598,7 +598,7 @@ def generate_newsletter(
     session: Session = Depends(get_session),
     current_user: User = Depends(require_admin),
 ) -> dict:
-    if not settings.openai_api_key:
+    if not settings.openai_api_key and not settings.openai_base_url:
         raise HTTPException(status_code=503, detail="OPENAI_NOT_CONFIGURED")
 
     edition = session.get(Edition, payload.editionId)
@@ -616,7 +616,9 @@ def generate_newsletter(
     if not prompt:
         raise HTTPException(status_code=400, detail="NO_CONTRIBUTIONS")
 
-    client = OpenAI(api_key=settings.openai_api_key, timeout=30.0)
+    api_key = settings.openai_api_key or "local"
+    base_url = settings.openai_base_url or None
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=30.0)
     system_message = (
         "Tu es un redacteur de newsletter interne. "
         "Rends uniquement du HTML (pas de markdown), avec des titres h1/h2, "
@@ -637,7 +639,11 @@ def generate_newsletter(
     except Exception as error:
         logger.exception(
             "newsletter_ai_failed",
-            extra={"edition_id": str(edition.id), "model": settings.openai_model},
+            extra={
+                "edition_id": str(edition.id),
+                "model": settings.openai_model,
+                "base_url": settings.openai_base_url or "openai",
+            },
         )
         raise HTTPException(status_code=502, detail="OPENAI_REQUEST_FAILED") from error
 
@@ -645,7 +651,11 @@ def generate_newsletter(
     if not content:
         logger.error(
             "newsletter_ai_empty",
-            extra={"edition_id": str(edition.id), "model": settings.openai_model},
+            extra={
+                "edition_id": str(edition.id),
+                "model": settings.openai_model,
+                "base_url": settings.openai_base_url or "openai",
+            },
         )
         raise HTTPException(status_code=502, detail="OPENAI_EMPTY_RESPONSE")
 
@@ -655,6 +665,7 @@ def generate_newsletter(
             "edition_id": str(edition.id),
             "contributions": len(contributions),
             "model": settings.openai_model,
+            "base_url": settings.openai_base_url or "openai",
         },
     )
 

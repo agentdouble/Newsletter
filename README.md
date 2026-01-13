@@ -39,6 +39,7 @@ Copiez `.env.example` (ou `.env.exemple`) vers `.env` et ajustez les valeurs si 
 - `SESSION_TTL_HOURS` (durée de validité d’une session, en heures)
 - `PASSWORD_MIN_LENGTH` (longueur minimale des mots de passe)
 - `OPENAI_API_KEY` (clé API OpenAI pour la génération IA)
+- `OPENAI_BASE_URL` (optionnel : URL compatible OpenAI, ex `http://localhost:8001/v1` pour vLLM local)
 - `OPENAI_MODEL` (modèle GPT utilisé, par défaut `gpt-4o-mini`)
 
 Assurez-vous que la base PostgreSQL existe (exemple) :
@@ -46,6 +47,12 @@ Assurez-vous que la base PostgreSQL existe (exemple) :
 ```bash
 createdb anjanews
 ```
+
+## vLLM local (mode OpenAI-compatible)
+
+- Démarrez vLLM avec un endpoint OpenAI-compatible (ex: `http://localhost:8001/v1`).
+- Renseignez `OPENAI_BASE_URL` + `OPENAI_MODEL` selon le modèle servi.
+- `OPENAI_API_KEY` peut rester vide en local si vLLM n'en demande pas.
 
 ## Lancement via `start.sh`
 
