@@ -58,6 +58,7 @@ Utilisez toujours le script de lancement :
 - Le script installe les dépendances, applique les migrations et démarre backend + frontend.
 - Les ports configurés dans `.env` sont libérés si déjà utilisés, pour éviter un démarrage sur un port inattendu.
 - L’interface est servie par Vite (port `FRONTEND_PORT`).
+- Les migrations et Uvicorn sont lancés via `uv run -m` pour garantir l’exécution même si les entrypoints ne sont pas détectés.
 
 ## Première connexion
 

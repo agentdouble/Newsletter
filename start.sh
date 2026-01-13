@@ -66,13 +66,13 @@ if [ -d "${ROOT_DIR}/backend" ]; then
   uv sync
 
   echo "[start] Running backend migrations…"
-  uv run alembic upgrade head
+  uv run -m alembic upgrade head
 
   echo "[start] Starting backend on port ${BACKEND_PORT}…"
   if [ "${ENV:-development}" = "development" ]; then
-    uv run uvicorn app.main:app --reload --host 0.0.0.0 --port "${BACKEND_PORT}" &
+    uv run -m uvicorn app.main:app --reload --host 0.0.0.0 --port "${BACKEND_PORT}" &
   else
-    uv run uvicorn app.main:app --host 0.0.0.0 --port "${BACKEND_PORT}" &
+    uv run -m uvicorn app.main:app --host 0.0.0.0 --port "${BACKEND_PORT}" &
   fi
   BACKEND_PID=$!
 else
