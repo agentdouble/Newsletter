@@ -1135,8 +1135,6 @@ function App() {
             onPublish={handlePublishDraft}
             isGenerating={isGeneratingDraft}
             generatorError={generatorError}
-            systemPrompt={generatorSystemPrompt}
-            onPromptChange={setGeneratorSystemPrompt}
           />
         )}
         {currentTab.id === 'admin' && (
@@ -1147,6 +1145,9 @@ function App() {
             resetPasswords={resetPasswords}
             passwordMinLength={PASSWORD_MIN_LENGTH}
             defaultNewsletterTitle={currentNewsletterLabel}
+            systemPrompt={generatorSystemPrompt}
+            defaultSystemPrompt={DEFAULT_SYSTEM_PROMPT}
+            onPromptChange={setGeneratorSystemPrompt}
             onAddUser={handleAddUser}
             onResetUserPassword={handleResetUserPassword}
             onAddGroup={handleAddGroup}
@@ -1655,9 +1656,7 @@ function GeneratorTab({
   onGenerate,
   onPublish,
   isGenerating,
-  generatorError,
-  systemPrompt,
-  onPromptChange
+  generatorError
 }) {
   const hasContributions = contributions.length > 0;
   const editorRef = useRef(null);
@@ -1728,23 +1727,11 @@ function GeneratorTab({
           <h2>Draft de newsletter</h2>
           <p className="panel-subtitle">
             Généré automatiquement à partir des contributions reçues pour{' '}
-            {targetLabel}. À relire avant envoi.
+            {targetLabel}. À relire avant envoi. Prompt IA dans l'onglet Admin > Prompt IA.
           </p>
         </header>
         <div className="panel-body">
           <div className="form-grid form-grid--compact">
-            <label className="field field--full">
-              <span className="field-label">Prompt de generation IA</span>
-              <textarea
-                value={systemPrompt}
-                onChange={(event) => onPromptChange(event.target.value)}
-                rows={6}
-                placeholder="Instructions pour la generation IA"
-              />
-              <span className="helper-text">
-                Laisse vide pour revenir au prompt par defaut.
-              </span>
-            </label>
             <label className="field field--full">
               <span className="field-label">Image (URL optionnelle)</span>
               <input
@@ -1796,6 +1783,9 @@ function AdminTab({
   resetPasswords,
   passwordMinLength,
   defaultNewsletterTitle,
+  systemPrompt,
+  defaultSystemPrompt,
+  onPromptChange,
   onAddUser,
   onResetUserPassword,
   onAddGroup,
@@ -1818,7 +1808,8 @@ function AdminTab({
   const adminTabs = [
     { id: 'newsletters', label: 'Newsletters & équipes' },
     { id: 'users', label: 'Utilisateurs & rôles' },
-    { id: 'groups', label: 'Groupes & droits' }
+    { id: 'groups', label: 'Groupes & droits' },
+    { id: 'prompt', label: 'Prompt IA' }
   ];
   const [activeAdminTab, setActiveAdminTab] = useState(adminTabs[0].id);
 
@@ -2271,6 +2262,42 @@ function AdminTab({
               </button>
             </div>
           </form>
+        </article>
+      )}
+
+      {activeAdminTab === 'prompt' && (
+        <article className="panel-card">
+          <header className="panel-header">
+            <h2>Prompt IA</h2>
+            <p className="panel-subtitle">
+              Instructions transmises au modele pour generer la newsletter.
+            </p>
+          </header>
+          <div className="panel-body">
+            <div className="form-grid form-grid--compact">
+              <label className="field field--full">
+                <span className="field-label">Prompt systeme</span>
+                <textarea
+                  value={systemPrompt}
+                  onChange={(event) => onPromptChange(event.target.value)}
+                  rows={8}
+                  placeholder="Instructions pour la generation IA"
+                />
+                <span className="helper-text">
+                  Laisse vide pour utiliser le prompt par defaut.
+                </span>
+              </label>
+            </div>
+            <div className="form-actions form-actions--right">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => onPromptChange(defaultSystemPrompt)}
+              >
+                Reinitialiser le prompt
+              </button>
+            </div>
+          </div>
         </article>
       )}
     </section>
