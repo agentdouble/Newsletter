@@ -2,14 +2,23 @@ from __future__ import annotations
 
 from .models import Contribution
 
-SYSTEM_MESSAGE = (
+IMMUTABLE_SYSTEM_MESSAGE = (
+    "Rends uniquement du HTML (pas de markdown), avec un h1 puis des h2 si besoin."
+)
+DEFAULT_SYSTEM_MESSAGE = (
     "Tu es un redacteur de newsletter interne. "
-    "Rends uniquement du HTML (pas de markdown), avec un h1 puis des h2 si besoin. "
     "Ecris un article fluide et narratif, pas une liste de faits. "
     "Evite les listes a puces sauf si strictement necessaire. "
     "Ecris en francais, style clair et professionnel. "
     "Ne fabrique aucune information, synthese uniquement a partir des contributions."
 )
+
+
+def build_system_message(custom_prompt: str | None) -> str:
+    cleaned = (custom_prompt or "").strip()
+    if cleaned:
+        return f"{cleaned}\n{IMMUTABLE_SYSTEM_MESSAGE}"
+    return f"{DEFAULT_SYSTEM_MESSAGE}\n{IMMUTABLE_SYSTEM_MESSAGE}"
 
 
 def format_contribution_for_prompt(contribution: Contribution) -> str:

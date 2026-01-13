@@ -42,8 +42,10 @@ const ROLE_LABELS = {
 
 const AUTH_STORAGE_KEY = 'anjanews.session';
 const PASSWORD_MIN_LENGTH = 10;
+const IMMUTABLE_SYSTEM_PROMPT =
+  'Rends uniquement du HTML (pas de markdown), avec un h1 puis des h2 si besoin.';
 const DEFAULT_SYSTEM_PROMPT =
-  'Tu es un redacteur de newsletter interne. Rends uniquement du HTML (pas de markdown), avec un h1 puis des h2 si besoin. Ecris un article fluide et narratif, pas une liste de faits. Evite les listes a puces sauf si strictement necessaire. Ecris en francais, style clair et professionnel. Ne fabrique aucune information, synthese uniquement a partir des contributions.';
+  'Tu es un redacteur de newsletter interne. Ecris un article fluide et narratif, pas une liste de faits. Evite les listes a puces sauf si strictement necessaire. Ecris en francais, style clair et professionnel. Ne fabrique aucune information, synthese uniquement a partir des contributions.';
 
 function loadStoredSession() {
   try {
@@ -531,8 +533,9 @@ function App() {
 
     try {
       const systemPrompt = (generatorSystemPrompt || '').trim();
+      const defaultPrompt = DEFAULT_SYSTEM_PROMPT.trim();
       const payload = { editionId: currentEditionId };
-      if (systemPrompt) {
+      if (systemPrompt && systemPrompt !== defaultPrompt) {
         payload.systemPrompt = systemPrompt;
       }
       const data = await request('/api/newsletters/generate', {
@@ -2277,7 +2280,14 @@ function AdminTab({
           <div className="panel-body">
             <div className="form-grid form-grid--compact">
               <label className="field field--full">
-                <span className="field-label">Prompt systeme</span>
+                <span className="field-label">Prompt systeme fixe</span>
+                <textarea value={IMMUTABLE_SYSTEM_PROMPT} readOnly rows={2} />
+                <span className="helper-text">
+                  Applique automatiquement en fin de prompt, non modifiable.
+                </span>
+              </label>
+              <label className="field field--full">
+                <span className="field-label">Instructions additionnelles</span>
                 <textarea
                   value={systemPrompt}
                   onChange={(event) => onPromptChange(event.target.value)}

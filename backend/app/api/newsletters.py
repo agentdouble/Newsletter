@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..logger import logger
 from ..models import Comment, Contribution, Edition, Group, Newsletter
-from ..newsletter_prompt import SYSTEM_MESSAGE, build_newsletter_prompt
+from ..newsletter_prompt import build_newsletter_prompt, build_system_message
 from ..schemas import CommentIn, NewsletterGenerateIn, NewsletterIn, ReactionIn
 from ..security import get_current_user, get_session, require_admin
 from ..serializers import serialize_comment, serialize_newsletter
@@ -45,9 +45,9 @@ def generate_newsletter(
         raise HTTPException(status_code=400, detail="NO_CONTRIBUTIONS")
 
     system_prompt_override = (payload.systemPrompt or "").strip()
-    system_prompt = system_prompt_override or SYSTEM_MESSAGE
+    system_prompt = build_system_message(system_prompt_override)
     prompt_context = {
-        "prompt_override": bool(system_prompt_override),
+        "custom_prompt": bool(system_prompt_override),
         "prompt_length": len(system_prompt),
     }
 
