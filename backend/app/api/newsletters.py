@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,6 +21,15 @@ settings = get_settings()
 router = APIRouter()
 
 
+def normalize_color(value: str | None) -> str | None:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return None
+    if not re.fullmatch(r"#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})", cleaned):
+        raise HTTPException(status_code=400, detail="Invalid color")
+    return cleaned.lower()
+
+
 @router.post("/api/newsletters/generate")
 def generate_newsletter(
     payload: NewsletterGenerateIn,
@@ -33,14 +43,26 @@ def generate_newsletter(
     if not edition:
         raise HTTPException(status_code=404, detail="Edition not found")
 
-    contributions = session.scalars(
+    group = None
+    if payload.groupId:
+        group = session.get(Group, payload.groupId)
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found")
+
+    stmt = (
         select(Contribution)
         .options(selectinload(Contribution.group))
         .where(Contribution.edition_id == edition.id)
-        .order_by(Contribution.created_at.desc())
-    ).all()
+    )
+    if payload.groupId:
+        stmt = stmt.where(Contribution.group_id == payload.groupId)
 
-    prompt = build_newsletter_prompt(edition.label, contributions)
+    contributions = session.scalars(stmt.order_by(Contribution.created_at.desc())).all()
+
+    label = edition.label
+    if group:
+        label = f"{edition.label} · {group.name}"
+    prompt = build_newsletter_prompt(label, contributions)
     if not prompt:
         raise HTTPException(status_code=400, detail="NO_CONTRIBUTIONS")
 
@@ -49,6 +71,7 @@ def generate_newsletter(
     prompt_context = {
         "custom_prompt": bool(system_prompt_override),
         "prompt_length": len(system_prompt),
+        "group_id": str(payload.groupId) if payload.groupId else None,
     }
 
     api_key = settings.openai_api_key or "local"
@@ -114,6 +137,8 @@ def create_newsletter(
     if not title or not body:
         raise HTTPException(status_code=400, detail="Newsletter title/body required")
 
+    color = normalize_color(payload.color)
+
     audience = "Toute l'organisation"
     if payload.groupId:
         group = session.get(Group, payload.groupId)
@@ -130,6 +155,7 @@ def create_newsletter(
         body=body,
         audience=audience,
         image_url=payload.imageUrl,
+        color=color,
         group_id=payload.groupId,
         edition_id=payload.editionId,
     )

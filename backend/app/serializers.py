@@ -44,6 +44,7 @@ def serialize_newsletter(newsletter: Newsletter) -> dict:
         "audience": newsletter.audience,
         "groupId": str(newsletter.group_id) if newsletter.group_id else None,
         "imageUrl": newsletter.image_url,
+        "color": newsletter.color,
         "body": newsletter.body,
         "reactions": {
             "up": newsletter.reaction_up or 0,

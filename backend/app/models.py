@@ -137,6 +137,7 @@ class Newsletter(Base):
     body = Column(Text, nullable=False)
     audience = Column(String(128), nullable=False)
     image_url = Column(Text, nullable=True)
+    color = Column(String(16), nullable=True)
     group_id = Column(
         UUID(as_uuid=True),
         ForeignKey("groups.id", ondelete="SET NULL"),

@@ -329,6 +329,7 @@ body {
 }
 
 .admin-newsletter-row {
+  --newsletter-accent: var(--accent-alt);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -343,6 +344,16 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.admin-newsletter-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-newsletter-title-row .newsletter-color-dot {
+  margin-top: 0;
 }
 
 .admin-newsletter-title {
@@ -433,6 +444,7 @@ body {
 }
 
 .newsletter-article {
+  --newsletter-accent: var(--accent-alt);
   position: relative;
   padding: 20px;
   border-radius: 16px;
@@ -499,6 +511,22 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.newsletter-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.newsletter-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--newsletter-accent);
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  margin-top: 6px;
 }
 
 .newsletter-article-header h3 {
@@ -830,6 +858,12 @@ body {
 
 .field textarea {
   resize: vertical;
+}
+
+.field input[type='color'] {
+  padding: 4px;
+  height: 40px;
+  cursor: pointer;
 }
 
 .notepad-textarea {

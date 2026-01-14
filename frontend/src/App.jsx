@@ -59,6 +59,7 @@ const AUTH_STORAGE_KEY = 'anjanews.session';
 const PASSWORD_MIN_LENGTH = 10;
 const DEFAULT_SYSTEM_PROMPT =
   'Tu es un redacteur de newsletter interne. Ecris un article fluide et narratif, pas une liste de faits. Evite les listes a puces sauf si strictement necessaire. Ecris en francais, style clair et professionnel. Ne fabrique aucune information, synthese uniquement a partir des contributions.';
+const DEFAULT_NEWSLETTER_COLOR = '#2563eb';
 
 function loadStoredSession() {
   try {
@@ -164,6 +165,12 @@ function makeSnippet(value, limit = 220) {
     : trimmed;
 }
 
+function getGroupLabel(groupId, groups) {
+  if (!groupId) return 'Toutes les équipes';
+  const group = groups.find((item) => item.id === groupId);
+  return group ? group.name : 'Groupe inconnu';
+}
+
 function buildNewsletterDraft(contributions, label) {
   if (!contributions.length) {
     return (
@@ -256,7 +263,7 @@ function App() {
   const [generatorSystemPrompt, setGeneratorSystemPrompt] = useState(
     DEFAULT_SYSTEM_PROMPT
   );
-  const [activeGroupId] = useState('all');
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
   const role = currentUser?.role || 'user';
@@ -317,6 +324,7 @@ function App() {
       setUsers([]);
       setGroups([]);
       setCurrentEdition(null);
+      setSelectedGroupId(null);
       setResetPasswords({});
       setNewsletterDraftHtml('');
       setIsGeneratingDraft(false);
@@ -494,6 +502,71 @@ function App() {
 
   const currentEditionId = currentEdition?.id || null;
 
+  const currentUserId = currentUser?.id || null;
+  const currentUserRecord = useMemo(
+    () => users.find((user) => user.id === currentUserId) || currentUser,
+    [currentUser, currentUserId, users]
+  );
+  const userGroupIds = currentUserRecord?.groupIds || [];
+  const accessibleGroups = useMemo(() => {
+    if (role === 'superadmin') {
+      return groups;
+    }
+    if (!userGroupIds.length) return [];
+    const ids = new Set(userGroupIds);
+    return groups.filter((group) => ids.has(group.id));
+  }, [groups, role, userGroupIds]);
+  const canTargetAll = role !== 'user';
+  const groupOptions = useMemo(() => {
+    const options = accessibleGroups.map((group) => ({
+      id: group.id,
+      name: group.name
+    }));
+    if (canTargetAll || !options.length) {
+      return [{ id: 'all', name: 'Toutes les équipes' }, ...options];
+    }
+    return options;
+  }, [accessibleGroups, canTargetAll]);
+
+  useEffect(() => {
+    if (
+      selectedGroupId &&
+      groupOptions.some((group) => group.id === selectedGroupId)
+    ) {
+      return;
+    }
+    if (accessibleGroups.length) {
+      setSelectedGroupId(accessibleGroups[0].id);
+    } else {
+      setSelectedGroupId('all');
+    }
+  }, [accessibleGroups, groupOptions, selectedGroupId]);
+
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.id === selectedGroupId) || null,
+    [groups, selectedGroupId]
+  );
+  const selectedGroupLabel = selectedGroup
+    ? selectedGroup.name
+    : 'Toutes les équipes';
+  const selectedNewsletterTitle = useMemo(
+    () =>
+      selectedGroup
+        ? `${currentNewsletterLabel} · ${selectedGroup.name}`
+        : currentNewsletterLabel,
+    [currentNewsletterLabel, selectedGroup]
+  );
+  const selectedGroupPayloadId =
+    selectedGroupId && selectedGroupId !== 'all' ? selectedGroupId : null;
+  const scopedContributions = useMemo(() => {
+    if (!selectedGroupId || selectedGroupId === 'all') {
+      return contributions;
+    }
+    return contributions.filter((contribution) => {
+      return contribution.groupId === selectedGroupId;
+    });
+  }, [contributions, selectedGroupId]);
+
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => tab.roles.includes(role)),
     [role]
@@ -506,17 +579,7 @@ function App() {
     return match ? match[0] : 'feed';
   }, [location.pathname]);
 
-  const activeGroup = useMemo(
-    () =>
-      activeGroupId === 'all'
-        ? null
-        : groups.find((group) => group.id === activeGroupId) || null,
-    [activeGroupId, groups]
-  );
-
-  const commentAuthor = activeGroup
-    ? `${currentUser?.name || ROLE_LABELS[role]} · ${activeGroup.name}`
-    : currentUser?.name || ROLE_LABELS[role];
+  const commentAuthor = currentUser?.name || ROLE_LABELS[role];
 
   const selectedNewsletterId = useMemo(() => {
     if (currentTabId !== 'feed') return null;
@@ -531,7 +594,7 @@ function App() {
     if (!currentEditionId) return;
     const requestBody = {
       editionId: currentEditionId,
-      groupId: activeGroupId === 'all' ? null : activeGroupId,
+      groupId: selectedGroupPayloadId,
       text: payload.text || '',
       successStory: payload.successStory || '',
       failStory: payload.failStory || ''
@@ -548,7 +611,7 @@ function App() {
     }
   };
 
-  const generatorContributions = contributions;
+  const generatorContributions = scopedContributions;
 
   const handleGenerateDraft = async () => {
     if (isGeneratingDraft || !generatorContributions.length) return;
@@ -558,7 +621,7 @@ function App() {
     if (!currentEditionId) {
       const draft = buildNewsletterDraft(
         generatorContributions,
-        currentNewsletterLabel
+        selectedNewsletterTitle
       );
       setNewsletterDraftHtml(draft);
       console.info('[generator] newsletter_draft_generated', {
@@ -573,6 +636,9 @@ function App() {
       const systemPrompt = (generatorSystemPrompt || '').trim();
       const defaultPrompt = DEFAULT_SYSTEM_PROMPT.trim();
       const payload = { editionId: currentEditionId };
+      if (selectedGroupPayloadId) {
+        payload.groupId = selectedGroupPayloadId;
+      }
       if (systemPrompt && systemPrompt !== defaultPrompt) {
         payload.systemPrompt = systemPrompt;
       }
@@ -593,7 +659,7 @@ function App() {
       console.error('[generator] ai_generate_failed', error);
       const draft = buildNewsletterDraft(
         generatorContributions,
-        currentNewsletterLabel
+        selectedNewsletterTitle
       );
       setNewsletterDraftHtml(draft);
       setGeneratorError(
@@ -608,14 +674,15 @@ function App() {
     }
   };
 
-  const handlePublishDraft = async (html, imageUrl) => {
+  const handlePublishDraft = async (html, imageUrl, color) => {
     const body = (html || '').trim();
     if (!body) return;
     const payload = {
-      title: currentNewsletterLabel,
+      title: selectedNewsletterTitle,
       body,
       imageUrl: imageUrl || null,
-      groupId: activeGroupId === 'all' ? null : activeGroupId,
+      color: color || null,
+      groupId: selectedGroupPayloadId,
       editionId: currentEditionId
     };
 
@@ -684,12 +751,13 @@ function App() {
     }
   };
 
-  const handleCreateNewsletter = async ({ title, groupId }) => {
+  const handleCreateNewsletter = async ({ title, groupId, color }) => {
     const trimmedTitle = (title || '').trim();
     if (!trimmedTitle) return;
     const payload = {
       title: trimmedTitle,
       body: 'Brouillon à compléter.',
+      color: color || null,
       groupId: groupId && groupId !== 'all' ? groupId : null,
       editionId: currentEditionId
     };
@@ -1196,8 +1264,6 @@ function App() {
             {currentTab.id === 'feed' && (
               <FeedTab
                 newsletters={newsletters}
-                groups={groups}
-                activeGroupId={activeGroupId}
                 selectedNewsletterId={selectedNewsletterId}
                 onOpenNewsletter={handleOpenNewsletter}
                 onBackToFeed={handleBackToFeed}
@@ -1208,7 +1274,10 @@ function App() {
             )}
             {currentTab.id === 'collect' && (
               <CollectTab
-                targetLabel={currentNewsletterLabel}
+                editionLabel={currentNewsletterLabel}
+                groupOptions={groupOptions}
+                selectedGroupId={selectedGroupId}
+                onGroupChange={setSelectedGroupId}
                 onCreate={handleCreateContribution}
                 isReady={!isBootstrapping && Boolean(currentEditionId)}
                 authorLabel={currentUser?.name || 'Utilisateur connecté'}
@@ -1218,14 +1287,24 @@ function App() {
               <ContributionTab
                 contributions={contributions}
                 users={users}
-                targetLabel={currentNewsletterLabel}
+                groups={groups}
+                groupOptions={groupOptions}
+                selectedGroupId={selectedGroupId}
+                selectedGroupLabel={selectedGroupLabel}
+                onGroupChange={setSelectedGroupId}
+                editionLabel={currentNewsletterLabel}
                 isDarkMode={isDarkMode}
               />
             )}
             {currentTab.id === 'generator' && (
               <GeneratorTab
                 contributions={generatorContributions}
-                targetLabel={currentNewsletterLabel}
+                groups={groups}
+                groupOptions={groupOptions}
+                selectedGroupId={selectedGroupId}
+                selectedGroupLabel={selectedGroupLabel}
+                onGroupChange={setSelectedGroupId}
+                editionLabel={currentNewsletterLabel}
                 draftHtml={newsletterDraftHtml}
                 onGenerate={handleGenerateDraft}
                 onPublish={handlePublishDraft}
@@ -1262,8 +1341,6 @@ function App() {
 
 function FeedTab({
   newsletters,
-  groups,
-  activeGroupId,
   selectedNewsletterId,
   onOpenNewsletter,
   onBackToFeed,
@@ -1273,10 +1350,7 @@ function FeedTab({
 }) {
   const [commentDrafts, setCommentDrafts] = useState({});
 
-  const visibleNewsletters =
-    activeGroupId === 'all'
-      ? newsletters
-      : newsletters.filter((nl) => nl.groupId === activeGroupId);
+  const visibleNewsletters = newsletters;
   const selectedNewsletter =
     selectedNewsletterId &&
     visibleNewsletters.find((nl) => nl.id === selectedNewsletterId);
@@ -1331,6 +1405,9 @@ function FeedTab({
               ...(nl.reactions || {})
             };
             const comments = nl.comments || [];
+            const accentStyle = nl.color
+              ? { '--newsletter-accent': nl.color }
+              : undefined;
 
             const imageNode =
               nl.imageUrl && (
@@ -1352,6 +1429,7 @@ function FeedTab({
                     ? 'newsletter-article newsletter-article--active'
                     : 'newsletter-article newsletter-article--clickable'
                 }
+                style={accentStyle}
                 onClick={
                   isDetailView || !onOpenNewsletter
                     ? undefined
@@ -1361,9 +1439,12 @@ function FeedTab({
                 {isActive && imageNode}
                 <div className="newsletter-main">
                   <header className="newsletter-article-header">
-                    <div>
-                      <h3>{nl.title}</h3>
-                      <p className="newsletter-chip-audience">{nl.audience}</p>
+                    <div className="newsletter-title-row">
+                      <span className="newsletter-color-dot" aria-hidden="true" />
+                      <div>
+                        <h3>{nl.title}</h3>
+                        <p className="newsletter-chip-audience">{nl.audience}</p>
+                      </div>
                     </div>
                     <div className="newsletter-meta-column">
                       <span className="tag tag--soft">
@@ -1538,7 +1619,15 @@ function FeedTab({
   );
 }
 
-function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
+function CollectTab({
+  onCreate,
+  editionLabel,
+  groupOptions,
+  selectedGroupId,
+  onGroupChange,
+  isReady,
+  authorLabel
+}) {
   const [text, setText] = useState('');
 
   const handleSubmit = (event) => {
@@ -1546,11 +1635,11 @@ function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
     if (!isReady) return;
     const main = text.trim();
     if (!main) return;
-    onCreate({ newsletterLabel: targetLabel, text: main });
+    onCreate({ text: main });
     setText('');
   };
 
-  const isSubmitDisabled = !isReady || !text.trim();
+  const isSubmitDisabled = !isReady || !text.trim() || !selectedGroupId;
 
   return (
     <section className="panel-card panel-card--wide">
@@ -1565,7 +1654,18 @@ function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field field--full">
           <span className="field-label">Newsletter ciblée</span>
-          <div className="tag tag--soft">{targetLabel}</div>
+          <select
+            value={selectedGroupId || ''}
+            onChange={(event) => onGroupChange(event.target.value)}
+            disabled={groupOptions.length <= 1}
+          >
+            {groupOptions.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+          <span className="helper-text">Édition en cours · {editionLabel}</span>
         </label>
 
         <label className="field field--full">
@@ -1593,17 +1693,35 @@ function CollectTab({ onCreate, targetLabel, isReady, authorLabel }) {
   );
 }
 
-function ContributionTab({ contributions, users, targetLabel, isDarkMode }) {
+function ContributionTab({
+  contributions,
+  users,
+  groups,
+  groupOptions,
+  selectedGroupId,
+  selectedGroupLabel,
+  onGroupChange,
+  editionLabel,
+  isDarkMode
+}) {
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
 
-  const scopedContributions = useMemo(
-    () =>
-      contributions.filter(
-        (c) => (c.newsletterLabel || '') === (targetLabel || '')
-      ),
-    [contributions, targetLabel]
-  );
+  const scopedContributions = useMemo(() => {
+    if (!selectedGroupId || selectedGroupId === 'all') {
+      return contributions;
+    }
+    return contributions.filter((c) => c.groupId === selectedGroupId);
+  }, [contributions, selectedGroupId]);
+
+  const scopedUsers = useMemo(() => {
+    if (!selectedGroupId || selectedGroupId === 'all') {
+      return users;
+    }
+    return users.filter((user) =>
+      (user.groupIds || []).includes(selectedGroupId)
+    );
+  }, [selectedGroupId, users]);
 
   const uniqueContributors = useMemo(() => {
     const names = scopedContributions
@@ -1613,7 +1731,7 @@ function ContributionTab({ contributions, users, targetLabel, isDarkMode }) {
   }, [scopedContributions]);
 
   const contributorCount = uniqueContributors.length;
-  const totalUsers = users.length;
+  const totalUsers = scopedUsers.length;
   const participationRate = totalUsers
     ? Math.round((contributorCount / totalUsers) * 100)
     : 0;
@@ -1689,10 +1807,28 @@ function ContributionTab({ contributions, users, targetLabel, isDarkMode }) {
         <header className="panel-header">
           <h2>Contributions en cours</h2>
           <p className="panel-subtitle">
-            Vue d’ensemble des contributions pour {targetLabel} et taux de
-            participation.
+            Vue d’ensemble des contributions pour {selectedGroupLabel} ·{' '}
+            {editionLabel} et taux de participation.
           </p>
         </header>
+
+        <div className="form-grid form-grid--compact">
+          <label className="field field--full">
+            <span className="field-label">Newsletter ciblée</span>
+            <select
+              value={selectedGroupId || ''}
+              onChange={(event) => onGroupChange(event.target.value)}
+              disabled={groupOptions.length <= 1}
+            >
+              {groupOptions.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+            <span className="helper-text">Édition en cours · {editionLabel}</span>
+          </label>
+        </div>
 
         <div className="contribution-stats">
           <div className="chart-box">
@@ -1717,12 +1853,12 @@ function ContributionTab({ contributions, users, targetLabel, isDarkMode }) {
                 Boolean(mainSnippet) ||
                 Boolean(successSnippet) ||
                 Boolean(failSnippet);
+              const groupLabel = getGroupLabel(c.groupId, groups);
 
               return (
                 <div key={c.id} className="contribution-pill">
                   <p className="contribution-team">
-                    {(c.author || '').trim() || 'Anonyme'} ·{' '}
-                    {c.newsletterLabel || targetLabel || 'Newsletter'}
+                    {(c.author || '').trim() || 'Anonyme'} · {groupLabel}
                   </p>
                   {hasContent ? (
                     <>
@@ -1761,7 +1897,12 @@ function ContributionTab({ contributions, users, targetLabel, isDarkMode }) {
 
 function GeneratorTab({
   contributions,
-  targetLabel,
+  groups,
+  groupOptions,
+  selectedGroupId,
+  selectedGroupLabel,
+  onGroupChange,
+  editionLabel,
   draftHtml,
   onGenerate,
   onPublish,
@@ -1771,12 +1912,15 @@ function GeneratorTab({
   const hasContributions = contributions.length > 0;
   const editorRef = useRef(null);
   const [imageUrl, setImageUrl] = useState('');
+  const [newsletterColor, setNewsletterColor] = useState(
+    DEFAULT_NEWSLETTER_COLOR
+  );
 
   const handlePublishClick = () => {
     const node = editorRef.current;
     if (!node) return;
     const html = node.innerHTML || '';
-    onPublish(html, imageUrl || null);
+    onPublish(html, imageUrl || null, newsletterColor || null);
     setImageUrl('');
   };
 
@@ -1786,21 +1930,40 @@ function GeneratorTab({
         <header className="panel-header">
           <h2>Contributions à intégrer</h2>
           <p className="panel-subtitle">
-            Faits marquants saisis pour l’édition en cours, toutes équipes
-            confondues.
+            Contributions pour {selectedGroupLabel} · {editionLabel}.
           </p>
         </header>
         <div className="panel-body panel-body--list">
+          <div className="form-grid form-grid--compact">
+            <label className="field field--full">
+              <span className="field-label">Newsletter ciblée</span>
+              <select
+                value={selectedGroupId || ''}
+                onChange={(event) => onGroupChange(event.target.value)}
+                disabled={groupOptions.length <= 1}
+              >
+                {groupOptions.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+              <span className="helper-text">
+                Édition en cours · {editionLabel}
+              </span>
+            </label>
+          </div>
           {hasContributions ? (
             contributions.map((c) => {
               const mainSnippet = makeSnippet(c.text, 220);
               const successSnippet = makeSnippet(c.successStory);
               const failSnippet = makeSnippet(c.failStory);
+              const groupLabel = getGroupLabel(c.groupId, groups);
 
               return (
                 <div key={c.id} className="contribution-pill">
                   <p className="contribution-team">
-                    {c.newsletterLabel || targetLabel}
+                    {(c.author || '').trim() || 'Anonyme'} · {groupLabel}
                   </p>
                   {mainSnippet && (
                     <p className="contribution-impact">
@@ -1835,11 +1998,6 @@ function GeneratorTab({
       <article className="panel-card panel-card--accent">
         <header className="panel-header">
           <h2>Draft de newsletter</h2>
-          <p className="panel-subtitle">
-            Généré automatiquement à partir des contributions reçues pour{' '}
-            {targetLabel}. À relire avant envoi. Prompt IA dans l'onglet Admin{' '}
-            {'>'} Prompt IA.
-          </p>
         </header>
         <div className="panel-body">
           <div className="form-grid form-grid--compact">
@@ -1850,6 +2008,14 @@ function GeneratorTab({
                 value={imageUrl}
                 onChange={(event) => setImageUrl(event.target.value)}
                 placeholder="https://…"
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Couleur</span>
+              <input
+                type="color"
+                value={newsletterColor}
+                onChange={(event) => setNewsletterColor(event.target.value)}
               />
             </label>
           </div>
@@ -1914,7 +2080,8 @@ function AdminTab({
   const [newGroupName, setNewGroupName] = useState('');
   const [newNewsletter, setNewNewsletter] = useState({
     title: defaultNewsletterTitle,
-    groupId: 'all'
+    groupId: 'all',
+    color: DEFAULT_NEWSLETTER_COLOR
   });
   const adminTabs = [
     { id: 'newsletters', label: 'Newsletters & équipes' },
@@ -2041,6 +2208,19 @@ function AdminTab({
                 ))}
               </select>
             </label>
+            <label className="field">
+              <span className="field-label">Couleur</span>
+              <input
+                type="color"
+                value={newNewsletter.color}
+                onChange={(event) =>
+                  setNewNewsletter((prev) => ({
+                    ...prev,
+                    color: event.target.value
+                  }))
+                }
+              />
+            </label>
             <div className="form-actions form-actions--right">
               <button
                 type="submit"
@@ -2057,6 +2237,9 @@ function AdminTab({
                 const group = nl.groupId
                   ? groups.find((g) => g.id === nl.groupId)
                   : null;
+                const accentStyle = nl.color
+                  ? { '--newsletter-accent': nl.color }
+                  : undefined;
                 const relatedUsers = nl.groupId
                   ? users.filter((user) =>
                       (user.groupIds || []).includes(nl.groupId)
@@ -2072,13 +2255,24 @@ function AdminTab({
                       (u) => u.role === 'admin' || u.role === 'superadmin'
                     );
                 return (
-                  <div key={nl.id} className="admin-newsletter-row">
+                  <div
+                    key={nl.id}
+                    className="admin-newsletter-row"
+                    style={accentStyle}
+                  >
                     <div className="admin-newsletter-header">
-                      <div>
-                        <p className="admin-newsletter-title">{nl.title}</p>
-                        <p className="admin-newsletter-meta">
-                          Audience : {group ? group.name : nl.audience || 'Tous'}
-                        </p>
+                      <div className="admin-newsletter-title-row">
+                        <span
+                          className="newsletter-color-dot"
+                          aria-hidden="true"
+                        />
+                        <div>
+                          <p className="admin-newsletter-title">{nl.title}</p>
+                          <p className="admin-newsletter-meta">
+                            Audience :{' '}
+                            {group ? group.name : nl.audience || 'Tous'}
+                          </p>
+                        </div>
                       </div>
                       <span className="tag tag--soft">
                         {new Date(nl.date).toLocaleDateString('fr-FR')}
